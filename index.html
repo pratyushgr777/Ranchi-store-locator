@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Store Locator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      max-width: 600px;
+      margin: auto;
+      background-color: #f5f9ff;
+    }
+    h2 {
+      text-align: center;
+      color: #004080;
+    }
+    label {
+      font-weight: bold;
+      margin-top: 20px;
+      display: block;
+    }
+    select {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      margin-top: 8px;
+      margin-bottom: 20px;
+    }
+    #storeInfo {
+      background: #ffffff;
+      padding: 20px;
+      border: 1px solid #d0d0d0;
+      border-radius: 5px;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    a {
+      color: #0066cc;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>📍 Ranchi Store Locator</h2>
+
+  <label for="beatDropdown">Select Beat:</label>
+  <select id="beatDropdown">
+    <option value="">-- Choose a Beat --</option>
+  </select>
+
+  <label for="customerDropdown">Select Customer:</label>
+  <select id="customerDropdown">
+    <option value="">-- Choose a Customer --</option>
+  </select>
+
+  <div id="storeInfo"></div>
+
+  <script>
+    const sheetURL = "https://opensheet.vercel.app/1Cx09yjWN8lju1jZENNuMB4nLdEV1NDTay_miEc6r0Ys/Sheet1";
+    let storeData = [];
+
+    async function fetchData() {
+      const res = await fetch(sheetURL);
+      storeData = await res.json();
+
+      const beatDropdown = document.getElementById("beatDropdown");
+      const beats = [...new Set(storeData.map(item => item["Beat Ranchi 3"]).filter(Boolean))];
+
+      beats.forEach(beat => {
+        const option = document.createElement("option");
+        option.value = beat;
+        option.textContent = beat;
+        beatDropdown.appendChild(option);
+      });
+    }
+
+    document.getElementById("beatDropdown").addEventListener("change", function () {
+      const selectedBeat = this.value;
+      const customerDropdown = document.getElementById("customerDropdown");
+      customerDropdown.innerHTML = '<option value="">-- Choose a Customer --</option>';
+
+      const filtered = storeData.filter(item => item["Beat Ranchi 3"] === selectedBeat);
+      const customers = [...new Set(filtered.map(item => item["Customer Name"]))];
+
+      customers.forEach(name => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        customerDropdown.appendChild(option);
+      });
+
+      document.getElementById("storeInfo").innerHTML = "";
+    });
+
+    document.getElementById("customerDropdown").addEventListener("change", function () {
+      const beat = document.getElementById("beatDropdown").value;
+      const customer = this.value;
+      const match = storeData.find(item =>
+        item["Beat Ranchi 3"] === beat && item["Customer Name"] === customer
+      );
+
+      if (match) {
+        const phone = match["Phone"] || "Not Available";
+        const lat = match["Lat"];
+        const lon = match["Long"];
+        const mapLink = `https://www.google.com/maps?q=${lat},${lon}`;
+
+        document.getElementById("storeInfo").innerHTML = `
+          <strong>Phone:</strong> ${phone}<br>
+          <strong>Google Maps:</strong> <a href="${mapLink}" target="_blank">Open Location</a>
+        `;
+      } else {
+        document.getElementById("storeInfo").innerHTML = "No data found for this selection.";
+      }
+    });
+
+    fetchData();
+  </script>
+
+</body>
+</html>
