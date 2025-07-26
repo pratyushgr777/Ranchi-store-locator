@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Store Locator</title>
+  <title>Ranchi Store Locator</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -70,7 +70,10 @@
 
       const beatDropdown = document.getElementById("beatDropdown");
       const beats = [...new Set(storeData.map(item => item["Beat Ranchi 3"]).filter(Boolean))];
+      beats.sort();
 
+      beatDropdown.innerHTML = '<option value="">-- Choose a Beat --</option>';
+      beatDropdown.innerHTML += '<option value="ALL">All Beats</option>';
       beats.forEach(beat => {
         const option = document.createElement("option");
         option.value = beat;
@@ -84,8 +87,15 @@
       const customerDropdown = document.getElementById("customerDropdown");
       customerDropdown.innerHTML = '<option value="">-- Choose a Customer --</option>';
 
-      const filtered = storeData.filter(item => item["Beat Ranchi 3"] === selectedBeat);
+      let filtered;
+      if (selectedBeat === "ALL") {
+        filtered = storeData;
+      } else {
+        filtered = storeData.filter(item => item["Beat Ranchi 3"] === selectedBeat);
+      }
+
       const customers = [...new Set(filtered.map(item => item["Customer Name"]))];
+      customers.sort();
 
       customers.forEach(name => {
         const option = document.createElement("option");
@@ -100,9 +110,13 @@
     document.getElementById("customerDropdown").addEventListener("change", function () {
       const beat = document.getElementById("beatDropdown").value;
       const customer = this.value;
-      const match = storeData.find(item =>
-        item["Beat Ranchi 3"] === beat && item["Customer Name"] === customer
-      );
+
+      let match;
+      if (beat === "ALL") {
+        match = storeData.find(item => item["Customer Name"] === customer);
+      } else {
+        match = storeData.find(item => item["Beat Ranchi 3"] === beat && item["Customer Name"] === customer);
+      }
 
       if (match) {
         const phone = match["Phone"] || "Not Available";
