@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Nearby Stores by Beat</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      max-width: 700px;
+      margin: auto;
+      background-color: #f9faff;
+    }
+    h2 {
+      text-align: center;
+      color: #003366;
+    }
+    label {
+      font-weight: bold;
+      margin-top: 20px;
+      display: block;
+    }
+    select {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      margin-top: 8px;
+      margin-bottom: 20px;
+    }
+    .store-box {
+      background: #fff;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      box-shadow: 1px 1px 6px rgba(0,0,0,0.05);
+    }
+    a {
+      color: #007bff;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>📍 Stores Near You (Sorted by Distance)</h2>
+
+  <label>Select Beat:</label>
+  <select id="beatDropdown">
+    <option value="">-- Choose a Beat --</option>
+  </select>
+
+  <div id="storeList"></div>
+
+  <script>
+    const sheetURL = "https://opensheet.vercel.app/1Cx09yjWN8lju1jZENNuMB4nLdEV1NDTay_miEc6r0Ys/Sheet1";
+    let storeData = [];
+    let userLat = null;
+    let userLon = null;
+
+    function haversine(lat1, lon1, lat2, lon2) {
+      const toRad = deg => deg * Math.PI / 180;
+      const R = 6371; // km
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    async function fetchData() {
+      const res = await fetch(sheetURL);
+      storeData = await res.json();
+
+      const beats = [...new Set(storeData.map(entry => entry["Beat Ranchi 3"]).filter(Boolean))];
+      const beatDropdown = document.getElementById("beatDropdown");
+
+      beats.sort();
+      beats.forEach(beat => {
+        const opt = document.createElement("option");
+        opt.value = beat;
+        opt.textContent = beat;
+        beatDropdown.appendChild(opt);
+      });
+    }
+
+    function renderStores(filtered) {
+      const container = document.getElementById("storeList");
+      container.innerHTML = '';
+
+      filtered.forEach(store => {
+        const mapLink = `https://www.google.com/maps?q=${store["Lat"]},${store["Long"]}`;
+        const box = document.createElement("div");
+        box.className = 'store-box';
+        box.innerHTML = `
+          <strong>${store["Customer Name"]}</strong><br>
+          📞 ${store["Phone"] || "Not available"}<br>
+          📍 ${store.distance.toFixed(2)} km away<br>
+          <a href="${mapLink}" target="_blank">Open in Google Maps</a>
+        `;
+        container.appendChild(box);
+      });
+    }
+
+    document.getElementById("beatDropdown").addEventListener("change", function () {
+      const selectedBeat = this.value;
+
+      if (!userLat || !userLon) {
+        alert("Unable to detect your location. Please allow location access.");
+        return;
+      }
+
+      const filtered = storeData
+        .filter(entry => entry["Beat Ranchi 3"] === selectedBeat && entry["Lat"] && entry["Long"])
+        .map(entry => {
+          const lat = parseFloat(entry["Lat"]);
+          const lon = parseFloat(entry["Long"]);
+          const distance = haversine(userLat, userLon, lat, lon);
+          return { ...entry, distance };
+        })
+        .sort((a, b) => a.distance - b.distance);
+
+      renderStores(filtered);
+    });
+
+    function detectLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            userLat = pos.coords.latitude;
+            userLon = pos.coords.longitude;
+            fetchData();
+          },
+          err => {
+            alert("Location access denied. This app won't work without it.");
+          }
+        );
+      } else {
+        alert("Geolocation is not supported by this browser.");
+      }
+    }
+
+    detectLocation();
+  </script>
+
+</body>
+</html>
