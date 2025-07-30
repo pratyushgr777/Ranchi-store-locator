@@ -35,16 +35,16 @@
 <body>
 
 <h2>Existing Outlets Tracker</h2>
-<input type="text" id="searchInput" placeholder="Search by Customer, Beat, Route Name, or Description..." onkeyup="filterTable()">
+<input type="text" id="searchInput" placeholder="Search by Customer, Route, or DB..." onkeyup="filterTable()">
 
 <table id="outletsTable">
   <thead>
     <tr>
       <th>Customer Name</th>
-      <th>Beat</th>
-      <th>Route Name</th>
       <th>Route Plan Description</th>
-      <th>Phone</th>
+      <th>Route Name</th>
+      <th>Phone Number</th>
+      <th>DB Name</th>
       <th>Map</th>
     </tr>
   </thead>
@@ -68,19 +68,19 @@
 
       rows.forEach(row => {
         const customer = row.c[1]?.v || "";
-        const beat = row.c[0]?.v || "";
-        const routeName = row.c[5]?.v || "";
         const routeDesc = row.c[6]?.v || "";
+        const routeName = row.c[5]?.v || "";
         const phone = row.c[4]?.v || "";
+        const dbName = row.c[0]?.v || "";
         const mapLink = row.c[3]?.v || "#";
 
         tableContent += `
           <tr>
             <td>${customer}</td>
-            <td>${beat}</td>
-            <td>${routeName}</td>
             <td>${routeDesc}</td>
+            <td>${routeName}</td>
             <td><a href="tel:${phone}">${phone}</a></td>
+            <td>${dbName}</td>
             <td><a class="button" href="${mapLink}" target="_blank">Map</a></td>
           </tr>`;
       });
