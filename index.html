@@ -101,12 +101,47 @@
     let storeData = [];
     let map;
     let markers = [];
+    let userMarker = null;
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 23.3441, lng: 85.3096 }, // Ranchi
+        center: { lat: 23.3441, lng: 85.3096 }, // Ranchi center
         zoom: 12,
       });
+
+      // Add user's current location
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const userLatLng = {
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude
+            };
+
+            userMarker = new google.maps.Marker({
+              position: userLatLng,
+              map,
+              title: "Your Location",
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 8,
+                fillColor: "#007BFF",
+                fillOpacity: 1,
+                strokeWeight: 2,
+                strokeColor: "#ffffff"
+              }
+            });
+
+            // Optionally center map around user
+            // map.setCenter(userLatLng);
+          },
+          err => {
+            console.log("Location access denied.");
+          }
+        );
+      } else {
+        console.log("Geolocation not supported.");
+      }
     }
 
     function clearMarkers() {
