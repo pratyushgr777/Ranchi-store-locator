@@ -6,20 +6,23 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 40px;
-      max-width: 600px;
+      padding: 20px;
+      max-width: 800px;
       margin: auto;
       background-color: #f5f9ff;
     }
+
     h2 {
       text-align: center;
       color: #004080;
     }
+
     label {
       font-weight: bold;
       margin-top: 20px;
       display: block;
     }
+
     select {
       width: 100%;
       padding: 12px;
@@ -27,6 +30,7 @@
       margin-top: 8px;
       margin-bottom: 20px;
     }
+
     #storeInfo {
       background: #ffffff;
       padding: 20px;
@@ -35,32 +39,45 @@
       font-size: 16px;
       line-height: 1.6;
     }
+
+    #map {
+      width: 100%;
+      height: 400px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+
     a {
       color: #0066cc;
       text-decoration: none;
     }
+
     a:hover {
       text-decoration: underline;
     }
+
     .button {
-  padding: 10px 15px;
-  background: #007BFF;
-  color: white;
-  text-decoration: none;
-  border-radius: 4px;
-}
-.button:hover {
-  background: #0056b3;
-}
+      padding: 10px 15px;
+      background: #007BFF;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+    }
+
+    .button:hover {
+      background: #0056b3;
+    }
   </style>
-  <div style="text-align: center; margin: 20px 0;">
-  <a href="existing_outlets.html" class="button">View Existing Outlets</a>
-  </div>
 </head>
 <body>
+
   <div style="text-align:center; margin-bottom: 20px; font-size: 18px;">
-  <a href="index.html">🔁 Regular Store Locator</a> |
-  <a href="index2.html">📍 GPS Distance View</a>
+    <a href="index.html">🔁 Regular Store Locator</a> |
+    <a href="index2.html">📍 GPS Distance View</a>
+  </div>
+
+  <div style="text-align: center; margin: 20px 0;">
+    <a href="existing_outlets.html" class="button">View Existing Outlets</a>
   </div>
 
   <h2>📍 Ranchi Store Locator</h2>
@@ -75,11 +92,47 @@
     <option value="">-- Choose a Customer --</option>
   </select>
 
+  <div id="map"></div>
+
   <div id="storeInfo"></div>
 
   <script>
     const sheetURL = "https://opensheet.vercel.app/1Cx09yjWN8lju1jZENNuMB4nLdEV1NDTay_miEc6r0Ys/Sheet1";
     let storeData = [];
+    let map;
+    let markers = [];
+
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 23.3441, lng: 85.3096 }, // Ranchi
+        zoom: 12,
+      });
+    }
+
+    function clearMarkers() {
+      markers.forEach(marker => marker.setMap(null));
+      markers = [];
+    }
+
+    function addMarkers(data) {
+      clearMarkers();
+      data.forEach(store => {
+        if (store["Lat"] && store["Long"]) {
+          const marker = new google.maps.Marker({
+            map,
+            position: { lat: parseFloat(store["Lat"]), lng: parseFloat(store["Long"]) },
+            title: store["Customer Name"]
+          });
+          markers.push(marker);
+        }
+      });
+
+      if (data.length > 0) {
+        const first = data[0];
+        map.setCenter({ lat: parseFloat(first["Lat"]), lng: parseFloat(first["Long"]) });
+        map.setZoom(13);
+      }
+    }
 
     async function fetchData() {
       const res = await fetch(sheetURL);
@@ -121,6 +174,7 @@
         customerDropdown.appendChild(option);
       });
 
+      addMarkers(filtered);
       document.getElementById("storeInfo").innerHTML = "";
     });
 
@@ -145,6 +199,11 @@
           <strong>Phone:</strong> ${phone}<br>
           <strong>Google Maps:</strong> <a href="${mapLink}" target="_blank">Open Location</a>
         `;
+
+        if (lat && lon) {
+          map.setCenter({ lat: parseFloat(lat), lng: parseFloat(lon) });
+          map.setZoom(15);
+        }
       } else {
         document.getElementById("storeInfo").innerHTML = "No data found for this selection.";
       }
@@ -152,6 +211,8 @@
 
     fetchData();
   </script>
+
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDmJhoaeBL3cDKrucjCZjmNm2uYi_WguL8&callback=initMap" async defer></script>
 
 </body>
 </html>
