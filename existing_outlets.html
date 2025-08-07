@@ -58,14 +58,14 @@
 
 <div class="filters">
   <div>
-    <label for="routeNameSelect">Route Name:</label><br>
-    <select id="routeNameSelect" onchange="filterDropdowns()">
+    <label for="routeNameSelect">DBSR Name:</label><br>
+    <select id="routeNameSelect" onchange="onRouteNameChange()">
       <option value="">All Names</option>
     </select>
   </div>
 
   <div>
-    <label for="routePlanSelect">Route Plan Description:</label><br>
+    <label for="routePlanSelect">BEAT:</label><br>
     <select id="routePlanSelect" onchange="filterDropdowns()">
       <option value="">All Beats</option>
     </select>
@@ -76,8 +76,8 @@
   <thead>
     <tr>
       <th>Customer Name</th>
-      <th>Route Plan Description</th>
-      <th>Route Name</th>
+      <th>BEAT</th>
+      <th>DBSR Name</th>
       <th>DB Name</th>
       <th>Map</th>
     </tr>
@@ -100,35 +100,52 @@
     .then(rep => {
       const data = JSON.parse(rep.substr(47).slice(0, -2));
       allRows = data.table.rows;
-      populateDropdowns();
+      populateDBSRDropdown();
       renderTable(allRows);
     });
 
-  function populateDropdowns() {
-    const routeNames = new Set();
-    const routePlans = new Set();
+  function populateDBSRDropdown() {
+    const dbsrNames = new Set();
 
     allRows.forEach(row => {
-      const routeName = row.c[8]?.v || "";
-      const routePlan = row.c[9]?.v || "";
-      if (routeName) routeNames.add(routeName);
-      if (routePlan) routePlans.add(routePlan);
+      const dbsrName = row.c[8]?.v || "";
+      if (dbsrName) dbsrNames.add(dbsrName);
     });
 
     const routeNameSelect = document.getElementById("routeNameSelect");
-    const routePlanSelect = document.getElementById("routePlanSelect");
 
-    [...routeNames].sort().forEach(name => {
+    [...dbsrNames].sort().forEach(name => {
       const option = document.createElement("option");
       option.value = name;
       option.text = name;
       routeNameSelect.appendChild(option);
     });
+  }
 
-    [...routePlans].sort().forEach(plan => {
+  function onRouteNameChange() {
+    const selectedDBSR = document.getElementById("routeNameSelect").value;
+    populateBeatDropdown(selectedDBSR);
+    filterDropdowns();
+  }
+
+  function populateBeatDropdown(selectedDBSR) {
+    const beatSet = new Set();
+
+    allRows.forEach(row => {
+      const dbsr = row.c[8]?.v || "";
+      const beat = row.c[9]?.v || "";
+      if (!selectedDBSR || dbsr === selectedDBSR) {
+        if (beat) beatSet.add(beat);
+      }
+    });
+
+    const routePlanSelect = document.getElementById("routePlanSelect");
+    routePlanSelect.innerHTML = '<option value="">All Beats</option>';
+
+    [...beatSet].sort().forEach(beat => {
       const option = document.createElement("option");
-      option.value = plan;
-      option.text = plan;
+      option.value = beat;
+      option.text = beat;
       routePlanSelect.appendChild(option);
     });
   }
@@ -160,17 +177,17 @@
   }
 
   function filterDropdowns() {
-    const routeNameValue = document.getElementById("routeNameSelect").value;
-    const routePlanValue = document.getElementById("routePlanSelect").value;
+    const dbsrValue = document.getElementById("routeNameSelect").value;
+    const beatValue = document.getElementById("routePlanSelect").value;
 
     const filtered = allRows.filter(row => {
-      const routeName = row.c[8]?.v || "";
-      const routePlan = row.c[9]?.v || "";
+      const dbsr = row.c[8]?.v || "";
+      const beat = row.c[9]?.v || "";
 
-      const routeMatch = !routeNameValue || routeName === routeNameValue;
-      const planMatch = !routePlanValue || routePlan === routePlanValue;
+      const dbsrMatch = !dbsrValue || dbsr === dbsrValue;
+      const beatMatch = !beatValue || beat === beatValue;
 
-      return routeMatch && planMatch;
+      return dbsrMatch && beatMatch;
     });
 
     renderTable(filtered);
