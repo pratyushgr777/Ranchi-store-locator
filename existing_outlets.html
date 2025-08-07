@@ -4,38 +4,73 @@
   <title>Existing Outlets Tracker</title>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
-    input[type="text"] {
-      width: 60%;
-      padding: 10px;
-      font-size: 16px;
+    h2 { color: #004080; text-align: center; }
+    .filters {
+      display: flex;
+      gap: 20px;
       margin-bottom: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    label {
+      font-weight: bold;
+    }
+    select {
+      padding: 8px;
+      font-size: 15px;
+    }
+    .button {
+      padding: 8px 12px;
+      background-color: #007BFF;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .button:hover {
+      background-color: #0056b3;
     }
     table {
       width: 100%;
       border-collapse: collapse;
+      margin-top: 10px;
     }
     th, td {
       padding: 10px;
       border-bottom: 1px solid #ccc;
       text-align: left;
     }
-    th { background-color: #f2f2f2; }
-    a.button {
-      padding: 6px 10px;
-      background: #007BFF;
+    th {
+      background-color: #004080;
       color: white;
-      text-decoration: none;
-      border-radius: 4px;
     }
-    a.button:hover {
-      background: #0056b3;
+    #backBtn {
+      margin-bottom: 20px;
+      display: inline-block;
     }
   </style>
 </head>
 <body>
 
+<a id="backBtn" class="button" href="https://pratyushgr777.github.io/Ranchi-store-locator/index.html">← Back to Store Locator</a>
+
 <h2>Existing Outlets Tracker</h2>
-<input type="text" id="searchInput" placeholder="Search by Customer, Route, or DB..." onkeyup="filterTable()">
+
+<div class="filters">
+  <div>
+    <label for="routeNameSelect">Route Name:</label><br>
+    <select id="routeNameSelect" onchange="filterDropdowns()">
+      <option value="">All Names</option>
+    </select>
+  </div>
+
+  <div>
+    <label for="routePlanSelect">Route Plan Description:</label><br>
+    <select id="routePlanSelect" onchange="filterDropdowns()">
+      <option value="">All Beats</option>
+    </select>
+  </div>
+</div>
 
 <table id="outletsTable">
   <thead>
@@ -58,42 +93,87 @@
   const query = encodeURIComponent("Select *");
   const url = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?sheet=${sheetName}&tq=${query}`;
 
+  let allRows = [];
+
   fetch(url)
     .then(res => res.text())
     .then(rep => {
       const data = JSON.parse(rep.substr(47).slice(0, -2));
-      const rows = data.table.rows;
-      let tableContent = "";
-
-      rows.forEach(row => {
-        const customerName = row.c[3]?.v || "";
-        const routeDesc = row.c[9]?.v || "";
-        const routeName = row.c[8]?.v || "";
-        const dbName = row.c[1]?.v || "";
-        const mapLink = row.c[11]?.v || "#";
-
-        tableContent += `
-          <tr>
-            <td>${customerName}</td>
-            <td>${routeDesc}</td>
-            <td>${routeName}</td>
-            <td>${dbName}</td>
-            <td><a class="button" href="${mapLink}" target="_blank">Map</a></td>
-          </tr>`;
-      });
-
-      document.getElementById("tableBody").innerHTML = tableContent;
+      allRows = data.table.rows;
+      populateDropdowns();
+      renderTable(allRows);
     });
 
-  function filterTable() {
-    const input = document.getElementById("searchInput").value.toLowerCase();
-    const rows = document.querySelectorAll("#outletsTable tbody tr");
+  function populateDropdowns() {
+    const routeNames = new Set();
+    const routePlans = new Set();
+
+    allRows.forEach(row => {
+      const routeName = row.c[8]?.v || "";
+      const routePlan = row.c[9]?.v || "";
+      if (routeName) routeNames.add(routeName);
+      if (routePlan) routePlans.add(routePlan);
+    });
+
+    const routeNameSelect = document.getElementById("routeNameSelect");
+    const routePlanSelect = document.getElementById("routePlanSelect");
+
+    [...routeNames].sort().forEach(name => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.text = name;
+      routeNameSelect.appendChild(option);
+    });
+
+    [...routePlans].sort().forEach(plan => {
+      const option = document.createElement("option");
+      option.value = plan;
+      option.text = plan;
+      routePlanSelect.appendChild(option);
+    });
+  }
+
+  function renderTable(rows) {
+    const tableBody = document.getElementById("tableBody");
+    let tableContent = "";
 
     rows.forEach(row => {
-      const cells = row.querySelectorAll("td");
-      const match = [...cells].some(cell => cell.innerText.toLowerCase().includes(input));
-      row.style.display = match ? "" : "none";
+      const customerName = row.c[3]?.v || "";
+      const routeDesc = row.c[9]?.v || "";
+      const routeName = row.c[8]?.v || "";
+      const dbName = row.c[1]?.v || "";
+      const lat = row.c[4]?.v || "";
+      const lon = row.c[5]?.v || "";
+      const mapLink = (lat && lon) ? `https://www.google.com/maps?q=${lat},${lon}` : "#";
+
+      tableContent += `
+        <tr>
+          <td>${customerName}</td>
+          <td>${routeDesc}</td>
+          <td>${routeName}</td>
+          <td>${dbName}</td>
+          <td><a class="button" href="${mapLink}" target="_blank">Map</a></td>
+        </tr>`;
     });
+
+    tableBody.innerHTML = tableContent || "<tr><td colspan='5'>No matching data</td></tr>";
+  }
+
+  function filterDropdowns() {
+    const routeNameValue = document.getElementById("routeNameSelect").value;
+    const routePlanValue = document.getElementById("routePlanSelect").value;
+
+    const filtered = allRows.filter(row => {
+      const routeName = row.c[8]?.v || "";
+      const routePlan = row.c[9]?.v || "";
+
+      const routeMatch = !routeNameValue || routeName === routeNameValue;
+      const planMatch = !routePlanValue || routePlan === routePlanValue;
+
+      return routeMatch && planMatch;
+    });
+
+    renderTable(filtered);
   }
 </script>
 
