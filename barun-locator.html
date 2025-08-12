@@ -22,9 +22,6 @@
       background: #fff; border: 1px solid #d0d0d0; border-radius: 8px;
       padding: 14px; line-height: 1.6; font-size: 15px;
     }
-
-    a { color: #0066cc; text-decoration: none; }
-    a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -58,8 +55,38 @@
     // Pulls the "Barun" tab directly
     const sheetURL = "https://opensheet.vercel.app/1Cx09yjWN8lju1jZENNuMB4nLdEV1NDTay_miEc6r0Ys/Barun";
 
-    // Normalized data array: {db, dbsr, beat, customer, lat, lon}
+    // Helper: trim string safely
+    const t = v => (v == null ? "" : String(v).trim());
+    const n = v => { const x = parseFloat(v); return Number.isFinite(x) ? x : NaN; };
+
+    // Robust header getter: try multiple candidate keys (case/space tolerant)
+    function getVal(row, candidates) {
+      for (const key of candidates) {
+        // exact
+        if (key in row && t(row[key]) !== "") return row[key];
+        // loose: try to find a matching key by normalized name
+        const norm = s => String(s).toLowerCase().replace(/\s+/g, " ").trim();
+        const wanted = norm(key);
+        for (const k in row) {
+          if (norm(k) === wanted && t(row[k]) !== "") return row[k];
+        }
+      }
+      return "";
+    }
+
+    // Column candidates (supports “Beat Name” and old “Beat”)
+    const CANDS = {
+      DB:       ["DB NAME","DB Name","DB"],
+      DBSR:     ["DBSR name","DBSR Name","DBSR"],
+      BEAT:     ["Beat Name","Beat"],   // <-- includes your new header
+      CUSTOMER: ["Customer Name","Customer"],
+      LAT:      ["Latitude","Lat"],
+      LON:      ["Longitude","Long","Lng"]
+    };
+
+    // Normalized array of entries: {db, dbsr, beat, customer, lat, lon}
     let data = [];
+
     let map, infoWindow;
     let markers = [];
     let userMarker = null, userLatLng = null;
@@ -69,9 +96,6 @@
     const $beat = () => document.getElementById("beatSelect");
     const $cust = () => document.getElementById("customerSelect");
     const $info = () => document.getElementById("infoPanel");
-
-    const t = v => (v == null ? "" : String(v).trim());
-    const n = v => { const x = parseFloat(v); return Number.isFinite(x) ? x : NaN; };
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
@@ -108,6 +132,10 @@
       }
     }
 
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+
     function makeMarker(entry) {
       if (!Number.isFinite(entry.lat) || !Number.isFinite(entry.lon)) return null;
       const gmaps = `https://www.google.com/maps?q=${entry.lat},${entry.lon}`;
@@ -128,7 +156,6 @@
         `);
         infoWindow.open(map, marker);
 
-        // select in customer dropdown if present
         const custSel = document.getElementById("customerSelect");
         if (custSel) {
           const opt = [...custSel.options].find(o => o.value === (entry.customer || ""));
@@ -169,8 +196,6 @@
       }
     }
 
-    const escapeHtml = s => String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-
     const uniqSorted = arr => [...new Set(arr.filter(v => t(v) !== ""))].sort((a,b)=>String(a).localeCompare(String(b),undefined,{sensitivity:'base'}));
 
     function populateSelect(el, values) {
@@ -194,27 +219,25 @@
     }
 
     function repopulateDownstream(from = "db") {
-      // Rebuild downstream selects based on current upstream selections
-      const dbVal   = $db().value;
-      const dbsrVal = $dbsr().value;
+      const dbVal = $db().value;
 
       let list = data.slice();
-      if (dbVal   !== "ALL") list = list.filter(e => t(e.db)   === t(dbVal));
+      if (dbVal !== "ALL") list = list.filter(e => t(e.db) === t(dbVal));
 
       if (from === "db") {
-        // rebuild DBSR, Beat, Customer
         populateSelect($dbsr(), uniqSorted(list.map(e => e.dbsr)));
-        // fallthrough to rebuild Beat and Customer using current (possibly reset) dbsrVal
       }
 
       let list2 = list.slice();
-      const _dbsr = $dbsr().value;
-      if (_dbsr !== "ALL") list2 = list2.filter(e => t(e.dbsr) === t(_dbsr));
+      const dbsrVal = $dbsr().value;
+      if (dbsrVal !== "ALL") list2 = list2.filter(e => t(e.dbsr) === t(dbsrVal));
+
       populateSelect($beat(), uniqSorted(list2.map(e => e.beat)));
 
       let list3 = list2.slice();
-      const _beat = $beat().value;
-      if (_beat !== "ALL") list3 = list3.filter(e => t(e.beat) === t(_beat));
+      const beatVal = $beat().value;
+      if (beatVal !== "ALL") list3 = list3.filter(e => t(e.beat) === t(beatVal));
+
       populateSelect($cust(), uniqSorted(list3.map(e => e.customer)));
     }
 
@@ -222,14 +245,13 @@
       const res = await fetch(sheetURL);
       const raw = await res.json();
 
-      // Normalize once so filters are robust (trims + parses)
       data = raw.map(r => ({
-        db:       t(r["DB NAME"]),
-        dbsr:     t(r["DBSR name"]),
-        beat:     t(r["Beat"]),          // <-- Column M used here
-        customer: t(r["Customer Name"]),
-        lat:      n(r["Latitude"]),
-        lon:      n(r["Longitude"]),
+        db:       t(getVal(r, CANDS.DB)),
+        dbsr:     t(getVal(r, CANDS.DBSR)),
+        beat:     t(getVal(r, CANDS.BEAT)),      // uses "Beat Name" (or "Beat")
+        customer: t(getVal(r, CANDS.CUSTOMER)),
+        lat:      n(getVal(r, CANDS.LAT)),
+        lon:      n(getVal(r, CANDS.LON)),
       }));
 
       populateSelect($db(), uniqSorted(data.map(e => e.db)));
@@ -237,7 +259,7 @@
       applyFilters();
     }
 
-    // Event wiring
+    // Events
     document.addEventListener("change", (e) => {
       if (e.target === $db())   { repopulateDownstream("db");   applyFilters(); }
       if (e.target === $dbsr()) { repopulateDownstream("dbsr"); applyFilters(); }
@@ -245,11 +267,9 @@
       if (e.target === $cust()) { applyFilters(); }
     });
 
-    // Kick off
     initData();
   </script>
 
-  <!-- Google Maps JS API key (yours) -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDmJhoaeBL3cDKrucjCZjmNm2uYi_WguL8&callback=initMap" async defer></script>
 </body>
 </html>
