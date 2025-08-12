@@ -7,90 +7,101 @@
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
-      max-width: 800px;
+      max-width: 900px;
       margin: auto;
       background-color: #f5f9ff;
     }
 
-    h2 {
-      text-align: center;
-      color: #004080;
-    }
+    h2 { text-align: center; color: #004080; }
 
-    label {
-      font-weight: bold;
-      margin-top: 20px;
-      display: block;
-    }
+    label { font-weight: bold; margin-top: 16px; display: block; }
 
-    select {
+    select, input[type="text"] {
       width: 100%;
       padding: 12px;
       font-size: 16px;
       margin-top: 8px;
-      margin-bottom: 20px;
+      margin-bottom: 12px;
+      border: 1px solid #d0d0d0;
+      border-radius: 6px;
+      box-sizing: border-box;
+      background: #fff;
     }
 
-    #storeInfo {
-      background: #ffffff;
-      padding: 20px;
-      border: 1px solid #d0d0d0;
-      border-radius: 5px;
-      font-size: 16px;
-      line-height: 1.6;
+    #controls { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 700px) {
+      #controls { grid-template-columns: 1fr 1fr; }
+      #customerBlock { grid-column: 1 / span 2; }
     }
 
     #map {
       width: 100%;
-      height: 400px;
+      height: 420px;
       border-radius: 10px;
-      margin-bottom: 20px;
+      margin: 16px 0 20px;
+      background: #fff;
     }
 
-    a {
-      color: #0066cc;
-      text-decoration: none;
+    #storeInfo {
+      background: #ffffff;
+      padding: 16px;
+      border: 1px solid #d0d0d0;
+      border-radius: 8px;
+      font-size: 16px;
+      line-height: 1.6;
     }
 
-    a:hover {
-      text-decoration: underline;
-    }
+    a { color: #0066cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
 
     .button {
-      padding: 10px 15px;
+      display: inline-block;
+      padding: 10px 14px;
       background: #007BFF;
       color: white;
       text-decoration: none;
-      border-radius: 4px;
+      border-radius: 6px;
+      margin-right: 6px;
     }
+    .button:hover { background: #0056b3; }
 
-    .button:hover {
-      background: #0056b3;
-    }
+    .toolbar { display: flex; gap: 8px; align-items: center; justify-content: center; margin: 8px 0 16px; }
   </style>
 </head>
 <body>
 
-  <div style="text-align:center; margin-bottom: 20px; font-size: 18px;">
+  <div class="toolbar" style="font-size: 18px;">
     <a href="index.html">🔁 Regular Store Locator</a> |
     <a href="index2.html">📍 GPS Distance View</a>
-  </div>
-
-  <div style="text-align: center; margin: 20px 0;">
-    <a href="existing_outlets.html" class="button">View Existing Outlets</a>
+    <a href="existing_outlets.html" class="button" style="margin-left:12px;">View Existing Outlets</a>
   </div>
 
   <h2>📍 Ranchi Store Locator</h2>
 
-  <label for="beatDropdown">Select Beat:</label>
-  <select id="beatDropdown">
-    <option value="">-- Choose a Beat --</option>
-  </select>
+  <div id="controls">
+    <div id="beatBlock">
+      <label for="beatDropdown">Select Beat</label>
+      <select id="beatDropdown">
+        <option value="">-- Choose a Beat --</option>
+      </select>
+    </div>
 
-  <label for="customerDropdown">Select Customer:</label>
-  <select id="customerDropdown">
-    <option value="">-- Choose a Customer --</option>
-  </select>
+    <div>
+      <label for="searchInput">Search Customer (type to filter)</label>
+      <input id="searchInput" type="text" placeholder="Start typing a customer name…" autocomplete="off" />
+    </div>
+
+    <div id="customerBlock">
+      <label for="customerDropdown">Select Customer</label>
+      <select id="customerDropdown">
+        <option value="">-- Choose a Customer --</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <a id="recenterBtn" href="javascript:void(0)" class="button">Use my location</a>
+  </div>
 
   <div id="map"></div>
 
@@ -98,75 +109,118 @@
 
   <script>
     const sheetURL = "https://opensheet.vercel.app/1Cx09yjWN8lju1jZENNuMB4nLdEV1NDTay_miEc6r0Ys/Sheet1";
+
     let storeData = [];
-    let map;
+    let map, infoWindow;
     let markers = [];
     let userMarker = null;
+    let userLatLng = null;
+
+    // Keep a quick lookup from name -> entry
+    let currentList = []; // filtered stores for current beat
+    let nameToEntry = new Map(); // customer name -> store entry
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 23.3441, lng: 85.3096 }, // Ranchi center
+        center: { lat: 23.3441, lng: 85.3096 }, // Ranchi
         zoom: 12,
+        mapTypeControl: false,
+        streetViewControl: false,
       });
+      infoWindow = new google.maps.InfoWindow();
 
-      // Add user's current location
+      // Try geolocation
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           pos => {
-            const userLatLng = {
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude
-            };
-
-            userMarker = new google.maps.Marker({
-              position: userLatLng,
-              map,
-              title: "Your Location",
-              icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                scale: 8,
-                fillColor: "#007BFF",
-                fillOpacity: 1,
-                strokeWeight: 2,
-                strokeColor: "#ffffff"
-              }
-            });
-
-            // Optionally center map around user
-            // map.setCenter(userLatLng);
+            userLatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            if (!userMarker) {
+              userMarker = new google.maps.Marker({
+                position: userLatLng,
+                map,
+                title: "Your Location",
+                icon: {
+                  path: google.maps.SymbolPath.CIRCLE,
+                  scale: 8,
+                  fillColor: "#007BFF",
+                  fillOpacity: 1,
+                  strokeWeight: 2,
+                  strokeColor: "#ffffff"
+                }
+              });
+            } else {
+              userMarker.setPosition(userLatLng);
+              userMarker.setMap(map);
+            }
           },
-          err => {
-            console.log("Location access denied.");
-          }
+          () => { /* user denied or unavailable */ }
         );
-      } else {
-        console.log("Geolocation not supported.");
       }
     }
 
     function clearMarkers() {
-      markers.forEach(marker => marker.setMap(null));
+      markers.forEach(m => m.setMap(null));
       markers = [];
     }
 
-    function addMarkers(data) {
+    function fitToMarkers(includeUser = true) {
+      const bounds = new google.maps.LatLngBounds();
+      let hasAny = false;
+
+      markers.forEach(m => {
+        bounds.extend(m.getPosition());
+        hasAny = true;
+      });
+      if (includeUser && userLatLng) {
+        bounds.extend(userLatLng);
+        hasAny = true;
+      }
+      if (hasAny) {
+        map.fitBounds(bounds);
+        // Optional: prevent over-zoom
+        const listener = google.maps.event.addListenerOnce(map, "bounds_changed", () => {
+          if (map.getZoom() > 15) map.setZoom(15);
+        });
+      }
+    }
+
+    function addMarkers(list) {
       clearMarkers();
-      data.forEach(store => {
-        if (store["Lat"] && store["Long"]) {
-          const marker = new google.maps.Marker({
-            map,
-            position: { lat: parseFloat(store["Lat"]), lng: parseFloat(store["Long"]) },
-            title: store["Customer Name"]
-          });
-          markers.push(marker);
-        }
+      nameToEntry.clear();
+
+      list.forEach(store => {
+        const lat = parseFloat(store["Lat"]);
+        const lng = parseFloat(store["Long"]);
+        const name = store["Customer Name"];
+        if (isNaN(lat) || isNaN(lng) || !name) return;
+
+        nameToEntry.set(name, store);
+
+        const marker = new google.maps.Marker({
+          map,
+          position: { lat, lng },
+          title: name
+        });
+
+        marker.addListener("click", () => {
+          // Select in dropdown when marker clicked
+          const customerDropdown = document.getElementById("customerDropdown");
+          customerDropdown.value = name;
+          customerDropdown.dispatchEvent(new Event("change"));
+
+          infoWindow.setContent(`
+            <div style="min-width:180px">
+              <strong>${name}</strong><br/>
+              <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank">Open in Google Maps</a>
+            </div>
+          `);
+          infoWindow.open(map, marker);
+        });
+
+        markers.push(marker);
       });
 
-      if (data.length > 0) {
-        const first = data[0];
-        map.setCenter({ lat: parseFloat(first["Lat"]), lng: parseFloat(first["Long"]) });
-        map.setZoom(13);
-      }
+      fitToMarkers(true);
     }
 
     async function fetchData() {
@@ -174,79 +228,112 @@
       storeData = await res.json();
 
       const beatDropdown = document.getElementById("beatDropdown");
-      const beats = [...new Set(storeData.map(item => item["Beat Ranchi 3"]).filter(Boolean))];
-      beats.sort();
+      const beats = [...new Set(storeData.map(i => i["Beat Ranchi 3"]).filter(Boolean))].sort();
 
-      beatDropdown.innerHTML = '<option value="">-- Choose a Beat --</option>';
-      beatDropdown.innerHTML += '<option value="ALL">All Beats</option>';
+      beatDropdown.innerHTML = '<option value="">-- Choose a Beat --</option><option value="ALL">All Beats</option>';
       beats.forEach(beat => {
-        const option = document.createElement("option");
-        option.value = beat;
-        option.textContent = beat;
-        beatDropdown.appendChild(option);
+        const opt = document.createElement("option");
+        opt.value = beat;
+        opt.textContent = beat;
+        beatDropdown.appendChild(opt);
       });
+    }
+
+    function populateCustomers(list) {
+      currentList = list.slice(); // keep a copy for search
+      const customerDropdown = document.getElementById("customerDropdown");
+      customerDropdown.innerHTML = '<option value="">-- Choose a Customer --</option>';
+
+      const names = [...new Set(list.map(i => i["Customer Name"]).filter(Boolean))].sort();
+      names.forEach(name => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        customerDropdown.appendChild(opt);
+      });
+    }
+
+    // Live filter for customers by search input
+    function filterCustomers() {
+      const q = document.getElementById("searchInput").value.trim().toLowerCase();
+      const customerDropdown = document.getElementById("customerDropdown");
+      const baseList = currentList;
+
+      const filtered = q
+        ? baseList.filter(i => (i["Customer Name"] || "").toLowerCase().includes(q))
+        : baseList;
+
+      populateCustomers(filtered);
     }
 
     document.getElementById("beatDropdown").addEventListener("change", function () {
       const selectedBeat = this.value;
-      const customerDropdown = document.getElementById("customerDropdown");
-      customerDropdown.innerHTML = '<option value="">-- Choose a Customer --</option>';
-
       let filtered;
-      if (selectedBeat === "ALL") {
-        filtered = storeData;
-      } else {
-        filtered = storeData.filter(item => item["Beat Ranchi 3"] === selectedBeat);
-      }
+      if (selectedBeat === "ALL") filtered = storeData;
+      else filtered = storeData.filter(i => i["Beat Ranchi 3"] === selectedBeat);
 
-      const customers = [...new Set(filtered.map(item => item["Customer Name"]))];
-      customers.sort();
-
-      customers.forEach(name => {
-        const option = document.createElement("option");
-        option.value = name;
-        option.textContent = name;
-        customerDropdown.appendChild(option);
-      });
-
+      populateCustomers(filtered);
+      document.getElementById("searchInput").value = "";
       addMarkers(filtered);
       document.getElementById("storeInfo").innerHTML = "";
     });
 
+    document.getElementById("searchInput").addEventListener("input", filterCustomers);
+
     document.getElementById("customerDropdown").addEventListener("change", function () {
-      const beat = document.getElementById("beatDropdown").value;
-      const customer = this.value;
-
-      let match;
-      if (beat === "ALL") {
-        match = storeData.find(item => item["Customer Name"] === customer);
-      } else {
-        match = storeData.find(item => item["Beat Ranchi 3"] === beat && item["Customer Name"] === customer);
+      const name = this.value;
+      if (!name) {
+        infoWindow.close();
+        return;
       }
+      const store = nameToEntry.get(name) || storeData.find(i => i["Customer Name"] === name);
+      if (!store) return;
 
-      if (match) {
-        const phone = match["Phone"] || "Not Available";
-        const lat = match["Lat"];
-        const lon = match["Long"];
-        const mapLink = `https://www.google.com/maps?q=${lat},${lon}`;
+      const phone = store["Phone"] || "Not Available";
+      const lat = parseFloat(store["Lat"]);
+      const lng = parseFloat(store["Long"]);
+      const mapLink = `https://www.google.com/maps?q=${lat},${lng}`;
 
-        document.getElementById("storeInfo").innerHTML = `
-          <strong>Phone:</strong> ${phone}<br>
-          <strong>Google Maps:</strong> <a href="${mapLink}" target="_blank">Open Location</a>
-        `;
+      document.getElementById("storeInfo").innerHTML = `
+        <strong>${name}</strong><br/>
+        <strong>Phone:</strong> ${phone}<br/>
+        <strong>Google Maps:</strong> <a href="${mapLink}" target="_blank">Open Location</a>
+      `;
 
-        if (lat && lon) {
-          map.setCenter({ lat: parseFloat(lat), lng: parseFloat(lon) });
-          map.setZoom(15);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        map.setCenter({ lat, lng });
+        map.setZoom(15);
+        // Open a small info window on the corresponding marker
+        const marker = markers.find(m => {
+          const p = m.getPosition();
+          return Math.abs(p.lat() - lat) < 1e-8 && Math.abs(p.lng() - lng) < 1e-8;
+        });
+        if (marker) {
+          infoWindow.setContent(`
+            <div style="min-width:180px">
+              <strong>${name}</strong><br/>
+              <a href="${mapLink}" target="_blank">Open in Google Maps</a>
+            </div>
+          `);
+          infoWindow.open(map, marker);
         }
+      }
+    });
+
+    // Recenter to user location
+    document.getElementById("recenterBtn").addEventListener("click", () => {
+      if (userLatLng) {
+        map.setCenter(userLatLng);
+        map.setZoom(14);
       } else {
-        document.getElementById("storeInfo").innerHTML = "No data found for this selection.";
+        alert("Couldn't get your location yet. Please allow location access.");
       }
     });
 
     fetchData();
   </script>
 
+  <!-- Your Google Maps key is used here -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDmJhoaeBL3cDKrucjCZjmNm2uYi_WguL8&callback=initMap" async defer></script>
 
 </body>
