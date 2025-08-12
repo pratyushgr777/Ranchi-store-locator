@@ -52,235 +52,251 @@
   <div id="infoPanel">Pick filters to view outlets. Click a marker to see details.</div>
 
   <script>
-  // Pulls the "Barun" tab directly
-  const sheetURL = "https://opensheet.vercel.app/1Cx09yjWN8lju1jZENNuMB4nLdEV1NDTay_miEc6r0Ys/Barun";
+    // Pulls the "Barun" tab directly from your Sheet
+    const sheetURL = "https://opensheet.vercel.app/1Cx09yjWN8lju1jZENNuMB4nLdEV1NDTay_miEc6r0Ys/Barun";
 
-  // Helpers
-  const t = v => (v == null ? "" : String(v).trim());
-  const n = v => { const x = parseFloat(v); return Number.isFinite(x) ? x : NaN; };
-  const escapeHtml = s => String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const uniqSorted = arr => [...new Set(arr.filter(v => t(v) !== ""))].sort((a,b)=>String(a).localeCompare(String(b),undefined,{sensitivity:'base'}));
+    // Helpers
+    const t = v => (v == null ? "" : String(v).trim());
+    const n = v => { const x = parseFloat(v); return Number.isFinite(x) ? x : NaN; };
+    const escapeHtml = s => String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    const uniqSorted = arr => [...new Set(arr.filter(v => t(v) !== ""))].sort((a,b)=>String(a).localeCompare(String(b),undefined,{sensitivity:'base'}));
 
-  // Robust header getter
-  function getVal(row, candidates) {
-    for (const key of candidates) {
-      if (key in row && t(row[key]) !== "") return row[key];
-      const norm = s => String(s).toLowerCase().replace(/\s+/g," ").trim();
-      const wanted = norm(key);
-      for (const k in row) if (norm(k) === wanted && t(row[k]) !== "") return row[k];
-    }
-    return "";
-  }
-
-  // Column candidates (supports “Beat Name” and old “Beat”)
-  const CANDS = {
-    DB:       ["DB NAME","DB Name","DB"],
-    DBSR:     ["DBSR name","DBSR Name","DBSR"],
-    BEAT:     ["Beat Name","Beat"],
-    CUSTOMER: ["Customer Name","Customer"],
-    LAT:      ["Latitude","Lat"],
-    LON:      ["Longitude","Long","Lng"]
-  };
-
-  // State
-  let data = [];           // normalized rows: {db, dbsr, beat, customer, lat, lon}
-  let map, infoWindow;
-  let markers = [];
-  let userMarker = null, userLatLng = null;
-
-  // DOM
-  const $db   = () => document.getElementById("dbSelect");
-  const $dbsr = () => document.getElementById("dbsrSelect");
-  const $beat = () => document.getElementById("beatSelect");
-  const $cust = () => document.getElementById("customerSelect");
-  const $info = () => document.getElementById("infoPanel");
-
-  // Populate select with optional value preservation
-  function populateSelect(el, values, keepValue = true) {
-    const prev = keepValue ? el.value : null;
-    el.innerHTML = '<option value="ALL">All</option>' + values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
-    if (keepValue && prev && (prev === "ALL" || values.includes(prev))) el.value = prev;
-  }
-
-  function initMap() {
-    map = new google.maps.Map(document.getElementById("map"), {
-      center: { lat: 23.3441, lng: 85.3096 }, // Ranchi
-      zoom: 11,
-      mapTypeControl: false,
-      streetViewControl: false,
-    });
-    infoWindow = new google.maps.InfoWindow();
-
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => {
-        userLatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        userMarker = new google.maps.Marker({
-          position: userLatLng, map, title: "Your Location",
-          icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#007BFF", fillOpacity: 1, strokeWeight: 2, strokeColor: "#ffffff" }
-        });
-      }, () => {});
-    }
-  }
-
-  function clearMarkers(){ markers.forEach(m => m.setMap(null)); markers = []; }
-
-  function fitToMarkers(includeUser = true) {
-    const bounds = new google.maps.LatLngBounds();
-    let any = false;
-    markers.forEach(m => { bounds.extend(m.getPosition()); any = true; });
-    if (includeUser && userLatLng) { bounds.extend(userLatLng); any = true; }
-    if (any) {
-      map.fitBounds(bounds);
-      google.maps.event.addListenerOnce(map, "bounds_changed", () => {
-        if (map.getZoom() > 15) map.setZoom(15);
-      });
-    }
-  }
-
-  function makeMarker(entry) {
-    if (!Number.isFinite(entry.lat) || !Number.isFinite(entry.lon)) return null;
-    const gmaps = `https://www.google.com/maps?q=${entry.lat},${entry.lon}`;
-    const marker = new google.maps.Marker({
-      map,
-      position: { lat: entry.lat, lng: entry.lon },
-      title: entry.customer || "(No name)",
-    });
-    marker.addListener("click", () => {
-      infoWindow.setContent(`
-        <div style="min-width:220px">
-          <strong>${escapeHtml(entry.customer || "")}</strong><br/>
-          DB: ${escapeHtml(entry.db || "-")}<br/>
-          DBSR: ${escapeHtml(entry.dbsr || "-")}<br/>
-          Beat: ${escapeHtml(entry.beat || "-")}<br/>
-          <a href="${gmaps}" target="_blank">Open in Google Maps</a>
-        </div>
-      `);
-      infoWindow.open(map, marker);
-      const custSel = $cust();
-      if (custSel) {
-        const opt = [...custSel.options].find(o => o.value === (entry.customer || ""));
-        if (opt) custSel.value = entry.customer || "";
+    // Robust header getter (handles case/space differences)
+    function getVal(row, candidates) {
+      for (const key of candidates) {
+        if (key in row && t(row[key]) !== "") return row[key];
+        const norm = s => String(s).toLowerCase().replace(/\s+/g," ").trim();
+        const wanted = norm(key);
+        for (const k in row) if (norm(k) === wanted && t(row[k]) !== "") return row[k];
       }
-      renderInfoPanel([entry]);
-    });
-    return marker;
-  }
-
-  function renderMarkers(list) {
-    clearMarkers();
-    list.forEach(e => { const m = makeMarker(e); if (m) markers.push(m); });
-    fitToMarkers(true);
-  }
-
-  function renderInfoPanel(list) {
-    if (!list || list.length === 0) { $info().innerHTML = "No outlets match the current filters."; return; }
-    if (list.length === 1) {
-      const e = list[0];
-      const link = (Number.isFinite(e.lat) && Number.isFinite(e.lon)) ? `https://www.google.com/maps?q=${e.lat},${e.lon}` : "#";
-      $info().innerHTML = `
-        <strong>${escapeHtml(e.customer || "")}</strong><br/>
-        DB: ${escapeHtml(e.db || "-")}<br/>
-        DBSR: ${escapeHtml(e.dbsr || "-")}<br/>
-        Beat: ${escapeHtml(e.beat || "-")}<br/>
-        ${Number.isFinite(e.lat) ? `Lat: ${e.lat}` : ""} ${Number.isFinite(e.lon) ? ` | Lon: ${e.lon}` : ""}<br/>
-        <a href="${link}" target="_blank">Open in Google Maps</a>
-      `;
-    } else {
-      $info().innerHTML = `Showing <strong>${list.length}</strong> outlets. Click a marker to see details.`;
+      return "";
     }
-  }
 
-  function filteredList() {
-    const dbVal   = $db().value;
-    const dbsrVal = $dbsr().value;
-    const beatVal = $beat().value;
-    const custVal = $cust().value;
+    // Column candidates (supports “Beat Name” and “Beat”)
+    const CANDS = {
+      DB:       ["DB NAME","DB Name","DB"],
+      DBSR:     ["DBSR name","DBSR Name","DBSR"],
+      BEAT:     ["Beat Name","Beat"],
+      CUSTOMER: ["Customer Name","Customer"],
+      LAT:      ["Latitude","Lat"],
+      LON:      ["Longitude","Long","Lng"]
+    };
 
-    let list = data.slice();
-    if (dbVal   !== "ALL") list = list.filter(e => t(e.db)   === t(dbVal));
-    if (dbsrVal !== "ALL") list = list.filter(e => t(e.dbsr) === t(dbsrVal));
-    if (beatVal !== "ALL") list = list.filter(e => t(e.beat) === t(beatVal));
-    if (custVal !== "ALL") list = list.filter(e => t(e.customer) === t(custVal));
-    return list;
-  }
+    // State
+    let data = []; // normalized rows: {db, dbsr, beat, customer, lat, lon}
+    let map, infoWindow;
+    let markers = [];
+    let userMarker = null, userLatLng = null;
 
-  function rebuildDBSR() {
-    const dbVal = $db().value;
-    let list = data.slice();
-    if (dbVal !== "ALL") list = list.filter(e => t(e.db) === t(dbVal));
-    populateSelect($dbsr(), uniqSorted(list.map(e => e.dbsr)), true);
-  }
+    // DOM
+    const $db   = () => document.getElementById("dbSelect");
+    const $dbsr = () => document.getElementById("dbsrSelect");
+    const $beat = () => document.getElementById("beatSelect");
+    const $cust = () => document.getElementById("customerSelect");
+    const $info = () => document.getElementById("infoPanel");
 
-  function rebuildBeat() {
-    const dbVal = $db().value, dbsrVal = $dbsr().value;
-    let list = data.slice();
-    if (dbVal   !== "ALL") list = list.filter(e => t(e.db)   === t(dbVal));
-    if (dbsrVal !== "ALL") list = list.filter(e => t(e.dbsr) === t(dbsrVal));
-    populateSelect($beat(), uniqSorted(list.map(e => e.beat)), true);
-  }
+    // Populate select with RAW values; keep previous value if still valid
+    function populateSelect(el, values, keepValue = true) {
+      const prev = keepValue ? el.value : null;
 
-  function rebuildCustomer() {
-    const list = filteredList().filter((e) => true); // use current DB/DBSR/Beat
-    populateSelect($cust(), uniqSorted(list.map(e => e.customer)), false /* don't keep value when beat changes */);
-  }
+      // Clear & add "All"
+      while (el.firstChild) el.removeChild(el.firstChild);
+      const optAll = document.createElement('option');
+      optAll.value = 'ALL';
+      optAll.textContent = 'All';
+      el.appendChild(optAll);
 
-  function applyFiltersAndRender() {
-    const list = filteredList();
-    renderMarkers(list);
-    renderInfoPanel(list);
-  }
+      // Add options with raw value (no HTML escaping in value)
+      values.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v;           // raw value (critical so comparisons match)
+        opt.textContent = v;     // safe as label via textContent
+        el.appendChild(opt);
+      });
 
-  async function initData() {
-    const res = await fetch(sheetURL);
-    const raw = await res.json();
+      if (keepValue && prev && (prev === 'ALL' || values.includes(prev))) {
+        el.value = prev;
+      }
+    }
 
-    data = raw.map(r => ({
-      db:       t(getVal(r, CANDS.DB)),
-      dbsr:     t(getVal(r, CANDS.DBSR)),
-      beat:     t(getVal(r, CANDS.BEAT)),      // supports “Beat Name”
-      customer: t(getVal(r, CANDS.CUSTOMER)),
-      lat:      n(getVal(r, CANDS.LAT)),
-      lon:      n(getVal(r, CANDS.LON)),
-    }));
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 23.3441, lng: 85.3096 }, // Ranchi
+        zoom: 11,
+        mapTypeControl: false,
+        streetViewControl: false,
+      });
+      infoWindow = new google.maps.InfoWindow();
 
-    populateSelect($db(), uniqSorted(data.map(e => e.db)), true);
-    rebuildDBSR();
-    rebuildBeat();
-    rebuildCustomer();
-    applyFiltersAndRender();
-  }
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          userLatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          userMarker = new google.maps.Marker({
+            position: userLatLng, map, title: "Your Location",
+            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#007BFF", fillOpacity: 1, strokeWeight: 2, strokeColor: "#ffffff" }
+          });
+        }, () => {});
+      }
+    }
 
-  // Event wiring with preservation
-  $db().addEventListener("change", () => {
-    rebuildDBSR();    // keep dbsr if still valid
-    rebuildBeat();    // keep beat if still valid
-    rebuildCustomer();// customers rebuilt for new context
-    applyFiltersAndRender();
-  });
+    function clearMarkers(){ markers.forEach(m => m.setMap(null)); markers = []; }
 
-  $dbsr().addEventListener("change", () => {
-    rebuildBeat();     // keep beat if still valid under new dbsr
-    rebuildCustomer(); // rebuild customers
-    applyFiltersAndRender();
-  });
+    function fitToMarkers(includeUser = true) {
+      const bounds = new google.maps.LatLngBounds();
+      let any = false;
+      markers.forEach(m => { bounds.extend(m.getPosition()); any = true; });
+      if (includeUser && userLatLng) { bounds.extend(userLatLng); any = true; }
+      if (any) {
+        map.fitBounds(bounds);
+        google.maps.event.addListenerOnce(map, "bounds_changed", () => {
+          if (map.getZoom() > 15) map.setZoom(15);
+        });
+      }
+    }
 
-  $beat().addEventListener("change", () => {
-    // IMPORTANT: do NOT rebuild the Beat select here (we'd lose selection)
-    rebuildCustomer();  // only rebuild customers for the chosen beat
-    applyFiltersAndRender();
-  });
+    function makeMarker(entry) {
+      if (!Number.isFinite(entry.lat) || !Number.isFinite(entry.lon)) return null;
+      const gmaps = `https://www.google.com/maps?q=${entry.lat},${entry.lon}`;
+      const marker = new google.maps.Marker({
+        map,
+        position: { lat: entry.lat, lng: entry.lon },
+        title: entry.customer || "(No name)",
+      });
+      marker.addListener("click", () => {
+        infoWindow.setContent(`
+          <div style="min-width:220px">
+            <strong>${escapeHtml(entry.customer || "")}</strong><br/>
+            DB: ${escapeHtml(entry.db || "-")}<br/>
+            DBSR: ${escapeHtml(entry.dbsr || "-")}<br/>
+            Beat: ${escapeHtml(entry.beat || "-")}<br/>
+            <a href="${gmaps}" target="_blank">Open in Google Maps</a>
+          </div>
+        `);
+        infoWindow.open(map, marker);
 
-  $cust().addEventListener("change", () => {
-    applyFiltersAndRender();
-  });
+        const custSel = $cust();
+        if (custSel) {
+          const opt = [...custSel.options].find(o => o.value === (entry.customer || ""));
+          if (opt) custSel.value = entry.customer || "";
+        }
+        renderInfoPanel([entry]);
+      });
+      return marker;
+    }
 
-  // Kick off
-  initData();
+    function renderMarkers(list) {
+      clearMarkers();
+      list.forEach(e => { const m = makeMarker(e); if (m) markers.push(m); });
+      fitToMarkers(true);
+    }
 
-  // Map init callback is in the script tag below
-</script>
+    function renderInfoPanel(list) {
+      if (!list || list.length === 0) { $info().innerHTML = "No outlets match the current filters."; return; }
+      if (list.length === 1) {
+        const e = list[0];
+        const link = (Number.isFinite(e.lat) && Number.isFinite(e.lon)) ? `https://www.google.com/maps?q=${e.lat},${e.lon}` : "#";
+        $info().innerHTML = `
+          <strong>${escapeHtml(e.customer || "")}</strong><br/>
+          DB: ${escapeHtml(e.db || "-")}<br/>
+          DBSR: ${escapeHtml(e.dbsr || "-")}<br/>
+          Beat: ${escapeHtml(e.beat || "-")}<br/>
+          ${Number.isFinite(e.lat) ? `Lat: ${e.lat}` : ""} ${Number.isFinite(e.lon) ? ` | Lon: ${e.lon}` : ""}<br/>
+          <a href="${link}" target="_blank">Open in Google Maps</a>
+        `;
+      } else {
+        $info().innerHTML = `Showing <strong>${list.length}</strong> outlets. Click a marker to see details.`;
+      }
+    }
 
+    function filteredList() {
+      const dbVal   = $db().value;
+      const dbsrVal = $dbsr().value;
+      const beatVal = $beat().value;
+      const custVal = $cust().value;
 
+      let list = data.slice();
+      if (dbVal   !== "ALL") list = list.filter(e => t(e.db)   === t(dbVal));
+      if (dbsrVal !== "ALL") list = list.filter(e => t(e.dbsr) === t(dbsrVal));
+      if (beatVal !== "ALL") list = list.filter(e => t(e.beat) === t(beatVal));
+      if (custVal !== "ALL") list = list.filter(e => t(e.customer) === t(custVal));
+      return list;
+    }
+
+    function rebuildDBSR() {
+      const dbVal = $db().value;
+      let list = data.slice();
+      if (dbVal !== "ALL") list = list.filter(e => t(e.db) === t(dbVal));
+      populateSelect($dbsr(), uniqSorted(list.map(e => e.dbsr)), true);
+    }
+
+    function rebuildBeat() {
+      const dbVal = $db().value, dbsrVal = $dbsr().value;
+      let list = data.slice();
+      if (dbVal   !== "ALL") list = list.filter(e => t(e.db)   === t(dbVal));
+      if (dbsrVal !== "ALL") list = list.filter(e => t(e.dbsr) === t(dbsrVal));
+      populateSelect($beat(), uniqSorted(list.map(e => e.beat)), true);
+    }
+
+    function rebuildCustomer() {
+      const list = filteredList(); // uses current DB/DBSR/Beat
+      populateSelect($cust(), uniqSorted(list.map(e => e.customer)), false); // don't keep value on beat change
+    }
+
+    function applyFiltersAndRender() {
+      const list = filteredList();
+      renderMarkers(list);
+      renderInfoPanel(list);
+    }
+
+    async function initData() {
+      const res = await fetch(sheetURL);
+      const raw = await res.json();
+
+      data = raw.map(r => ({
+        db:       t(getVal(r, CANDS.DB)),
+        dbsr:     t(getVal(r, CANDS.DBSR)),
+        beat:     t(getVal(r, CANDS.BEAT)),      // supports “Beat Name” or “Beat”
+        customer: t(getVal(r, CANDS.CUSTOMER)),
+        lat:      n(getVal(r, CANDS.LAT)),
+        lon:      n(getVal(r, CANDS.LON)),
+      }));
+
+      populateSelect($db(), uniqSorted(data.map(e => e.db)), true);
+      rebuildDBSR();
+      rebuildBeat();
+      rebuildCustomer();
+      applyFiltersAndRender();
+    }
+
+    // Event wiring with selection preservation
+    $db().addEventListener("change", () => {
+      rebuildDBSR();    // keep dbsr if still valid
+      rebuildBeat();    // keep beat if still valid
+      rebuildCustomer();// customers rebuilt for new context
+      applyFiltersAndRender();
+    });
+
+    $dbsr().addEventListener("change", () => {
+      rebuildBeat();     // keep beat if still valid under new dbsr
+      rebuildCustomer(); // rebuild customers
+      applyFiltersAndRender();
+    });
+
+    $beat().addEventListener("change", () => {
+      // DO NOT rebuild the Beat select here (would lose selection)
+      rebuildCustomer();  // only rebuild customers for the chosen beat
+      applyFiltersAndRender();
+    });
+
+    $cust().addEventListener("change", () => {
+      applyFiltersAndRender();
+    });
+
+    // Kick off
+    initData();
+  </script>
+
+  <!-- Google Maps JS API key (yours) -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDmJhoaeBL3cDKrucjCZjmNm2uYi_WguL8&callback=initMap" async defer></script>
 </body>
 </html>
