@@ -1,58 +1,200 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>Barun – Multi-Filter Store Locator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; max-width: 1000px; margin: auto; background: #f5f9ff; }
-    h2 { text-align: center; color: #004080; margin: 8px 0 16px; }
-
-    .controls { display: grid; gap: 12px; grid-template-columns: 1fr; }
-    @media (min-width: 860px) { .controls { grid-template-columns: repeat(4, 1fr); } }
-
-    label { font-weight: bold; display: block; margin-bottom: 6px; }
-    select {
-      width: 100%; padding: 10px; font-size: 15px;
-      border: 1px solid #d0d0d0; border-radius: 6px; background: #fff; box-sizing: border-box;
+    :root{
+      --bg: #0b1020;
+      --card: rgba(255,255,255,0.08);
+      --stroke: rgba(255,255,255,0.15);
+      --text: #e8eefc;
+      --muted: #a7b3d1;
+      --accent: #6aa8ff;
+      --accent-2: #6df0ff;
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --radius: 14px;
+    }
+    *{ box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(1000px 600px at 10% -10%, rgba(108, 133, 255, 0.25), transparent 60%),
+        radial-gradient(900px 700px at 110% 20%, rgba(0, 217, 255, 0.18), transparent 60%),
+        radial-gradient(700px 500px at 50% 120%, rgba(71, 147, 255, 0.18), transparent 60%),
+        var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
+      line-height: 1.45;
     }
 
-    #map { width: 100%; height: 460px; border-radius: 10px; margin: 16px 0 20px; background: #fff; }
-    #infoPanel {
-      background: #fff; border: 1px solid #d0d0d0; border-radius: 8px;
-      padding: 14px; line-height: 1.6; font-size: 15px;
+    /* Header */
+    .appbar {
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: saturate(140%) blur(8px);
+      background: rgba(6, 10, 24, 0.6);
+      border-bottom: 1px solid var(--stroke);
+    }
+    .appbar-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      max-width: 1100px; margin: 0 auto; padding: 12px 16px;
+    }
+    .title {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 700; letter-spacing: .3px;
+    }
+    .title .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, var(--accent-2), var(--accent));
+      box-shadow: 0 0 12px var(--accent);
+    }
+    .app-actions { display: flex; gap: 8px; }
+
+    .btn {
+      appearance: none; border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+      color: var(--text);
+      padding: 10px 14px; border-radius: 10px;
+      font-size: 15px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 8px;
+      box-shadow: var(--shadow);
+      transition: transform .06s ease, border-color .2s ease;
+      touch-action: manipulation;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary {
+      border-color: rgba(106, 168, 255, 0.6);
+      background: linear-gradient(180deg, rgba(106,168,255,0.25), rgba(106,168,255,0.12));
+    }
+
+    /* Layout */
+    .wrap {
+      max-width: 1100px; margin: 16px auto; padding: 0 16px 24px;
+      display: grid; gap: 16px;
+    }
+
+    /* Filters panel */
+    .panel {
+      border: 1px solid var(--stroke); border-radius: var(--radius);
+      background: var(--card);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel-head {
+      display: none;
+      align-items: center; justify-content: space-between;
+      padding: 10px 14px; border-bottom: 1px solid var(--stroke);
+    }
+    .panel-head h3 { margin: 0; font-size: 16px; font-weight: 600; color: var(--text); }
+    .panel-content {
+      display: grid; gap: 10px; padding: 12px; grid-template-columns: 1fr;
+    }
+    @media (min-width: 860px) {
+      .panel-head { display: none; }
+      .panel-content { grid-template-columns: repeat(4, 1fr); }
+    }
+    .field label {
+      display: block; font-size: 13px; color: var(--muted);
+      margin: 4px 2px 6px;
+    }
+    select {
+      width: 100%; padding: 12px 12px; font-size: 15px; color: var(--text);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--stroke); border-radius: 10px;
+      outline: none;
+    }
+    select:focus { border-color: rgba(109, 240, 255, 0.55); }
+
+    /* Map + info */
+    .map-card {
+      border: 1px solid var(--stroke); border-radius: var(--radius);
+      background: var(--card); box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    #map { width: 100%; height: 58vh; min-height: 360px; }
+    .info {
+      padding: 12px 14px; border-top: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+    }
+    .info p { margin: 0; color: var(--muted); }
+    .info strong { color: var(--text); }
+
+    /* Mobile filters toggle */
+    .filters-toggle { display: inline-flex; }
+    @media (min-width: 860px) { .filters-toggle { display: none; } }
+    .panel.collapsed .panel-content { display: none; }
+
+    /* Link */
+    a { color: var(--accent-2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Light-mode fallback */
+    @media (prefers-color-scheme: light) {
+      :root{
+        --bg: #f4f7ff; --card: rgba(255,255,255,0.9); --stroke: rgba(27,47,74,0.12);
+        --text: #0d2247; --muted: #4c6287; --accent: #2f6aff; --accent-2: #00a3ff;
+        --shadow: 0 6px 24px rgba(12,37,80,0.16);
+      }
+      select { background: rgba(255,255,255,0.9); }
     }
   </style>
 </head>
 <body>
 
-  <h2>🗺️ Barun – DB → DBSR → Beat → Customer</h2>
+  <!-- Sticky header -->
+  <header class="appbar">
+    <div class="appbar-inner">
+      <div class="title">
+        <span class="dot"></span>
+        <span>Barun — Multi-Filter Locator</span>
+      </div>
+      <div class="app-actions">
+        <button id="toggleFilters" class="btn filters-toggle" aria-expanded="true">Filters</button>
+        <button id="useMyLocation" class="btn btn-primary">Use my location</button>
+      </div>
+    </div>
+  </header>
 
-  <div class="controls">
-    <div>
-      <label for="dbSelect">DB Name</label>
-      <select id="dbSelect"><option value="ALL">All</option></select>
-    </div>
-    <div>
-      <label for="dbsrSelect">DBSR Name</label>
-      <select id="dbsrSelect"><option value="ALL">All</option></select>
-    </div>
-    <div>
-      <label for="beatSelect">Beat</label>
-      <select id="beatSelect"><option value="ALL">All</option></select>
-    </div>
-    <div>
-      <label for="customerSelect">Customer</label>
-      <select id="customerSelect"><option value="ALL">All</option></select>
-    </div>
-  </div>
+  <main class="wrap">
+    <!-- Filters -->
+    <section id="filtersPanel" class="panel">
+      <div class="panel-head">
+        <h3>Filters</h3>
+        <button id="toggleFilters2" class="btn">Close</button>
+      </div>
+      <div class="panel-content">
+        <div class="field">
+          <label for="dbSelect">DB Name</label>
+          <select id="dbSelect"><option value="ALL">All</option></select>
+        </div>
+        <div class="field">
+          <label for="dbsrSelect">DBSR Name</label>
+          <select id="dbsrSelect"><option value="ALL">All</option></select>
+        </div>
+        <div class="field">
+          <label for="beatSelect">Beat</label>
+          <select id="beatSelect"><option value="ALL">All</option></select>
+        </div>
+        <div class="field">
+          <label for="customerSelect">Customer</label>
+          <select id="customerSelect"><option value="ALL">All</option></select>
+        </div>
+      </div>
+    </section>
 
-  <div id="map"></div>
-
-  <div id="infoPanel">Pick filters to view outlets. Click a marker to see details.</div>
+    <!-- Map + info -->
+    <section class="map-card">
+      <div id="map"></div>
+      <div class="info">
+        <p id="infoPanel">Pick filters to view outlets. Tap a marker for details.</p>
+      </div>
+    </section>
+  </main>
 
   <script>
-    // Pulls the "Barun" tab directly from your Sheet
+    // Data source: "Barun" tab
     const sheetURL = "https://opensheet.vercel.app/1Cx09yjWN8lju1jZENNuMB4nLdEV1NDTay_miEc6r0Ys/Barun";
 
     // Helpers
@@ -61,7 +203,7 @@
     const escapeHtml = s => String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     const uniqSorted = arr => [...new Set(arr.filter(v => t(v) !== ""))].sort((a,b)=>String(a).localeCompare(String(b),undefined,{sensitivity:'base'}));
 
-    // Robust header getter (handles case/space differences)
+    // Flexible header resolver
     function getVal(row, candidates) {
       for (const key of candidates) {
         if (key in row && t(row[key]) !== "") return row[key];
@@ -94,34 +236,31 @@
     const $beat = () => document.getElementById("beatSelect");
     const $cust = () => document.getElementById("customerSelect");
     const $info = () => document.getElementById("infoPanel");
+    const $filtersPanel = () => document.getElementById("filtersPanel");
 
-    // Populate select with RAW values; keep previous value if still valid
+    // Build selects with raw values (keeps real comparison)
     function populateSelect(el, values, keepValue = true) {
       const prev = keepValue ? el.value : null;
-
-      // Clear & add "All"
       while (el.firstChild) el.removeChild(el.firstChild);
+
       const optAll = document.createElement('option');
-      optAll.value = 'ALL';
-      optAll.textContent = 'All';
+      optAll.value = 'ALL'; optAll.textContent = 'All';
       el.appendChild(optAll);
 
-      // Add options with raw value (no HTML escaping in value)
       values.forEach(v => {
         const opt = document.createElement('option');
-        opt.value = v;           // raw value (critical so comparisons match)
-        opt.textContent = v;     // safe as label via textContent
+        opt.value = v;
+        opt.textContent = v;
         el.appendChild(opt);
       });
 
-      if (keepValue && prev && (prev === 'ALL' || values.includes(prev))) {
-        el.value = prev;
-      }
+      if (keepValue && prev && (prev === 'ALL' || values.includes(prev))) el.value = prev;
     }
 
+    /* MAP */
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 23.3441, lng: 85.3096 }, // Ranchi
+        center: { lat: 23.3441, lng: 85.3096 },
         zoom: 11,
         mapTypeControl: false,
         streetViewControl: false,
@@ -133,14 +272,12 @@
           userLatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
           userMarker = new google.maps.Marker({
             position: userLatLng, map, title: "Your Location",
-            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#007BFF", fillOpacity: 1, strokeWeight: 2, strokeColor: "#ffffff" }
+            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#6aa8ff", fillOpacity: 1, strokeWeight: 2, strokeColor: "#ffffff" }
           });
         }, () => {});
       }
     }
-
     function clearMarkers(){ markers.forEach(m => m.setMap(null)); markers = []; }
-
     function fitToMarkers(includeUser = true) {
       const bounds = new google.maps.LatLngBounds();
       let any = false;
@@ -153,7 +290,6 @@
         });
       }
     }
-
     function makeMarker(entry) {
       if (!Number.isFinite(entry.lat) || !Number.isFinite(entry.lon)) return null;
       const gmaps = `https://www.google.com/maps?q=${entry.lat},${entry.lon}`;
@@ -173,25 +309,25 @@
           </div>
         `);
         infoWindow.open(map, marker);
-
         const custSel = $cust();
         if (custSel) {
-          const opt = [...custSel.options].find(o => o.value === (entry.customer || ""));
-          if (opt) custSel.value = entry.customer || "";
+          const match = [...custSel.options].find(o => o.value === (entry.customer || ""));
+          if (match) custSel.value = entry.customer || "";
         }
         renderInfoPanel([entry]);
       });
       return marker;
     }
-
     function renderMarkers(list) {
       clearMarkers();
       list.forEach(e => { const m = makeMarker(e); if (m) markers.push(m); });
       fitToMarkers(true);
     }
-
     function renderInfoPanel(list) {
-      if (!list || list.length === 0) { $info().innerHTML = "No outlets match the current filters."; return; }
+      if (!list || list.length === 0) {
+        $info().innerHTML = "No outlets match the current filters.";
+        return;
+      }
       if (list.length === 1) {
         const e = list[0];
         const link = (Number.isFinite(e.lat) && Number.isFinite(e.lon)) ? `https://www.google.com/maps?q=${e.lat},${e.lon}` : "#";
@@ -204,10 +340,11 @@
           <a href="${link}" target="_blank">Open in Google Maps</a>
         `;
       } else {
-        $info().innerHTML = `Showing <strong>${list.length}</strong> outlets. Click a marker to see details.`;
+        $info().innerHTML = `Showing <strong>${list.length}</strong> outlets. Tap a marker for details.`;
       }
     }
 
+    /* DATA + FILTERS */
     function filteredList() {
       const dbVal   = $db().value;
       const dbsrVal = $dbsr().value;
@@ -221,14 +358,12 @@
       if (custVal !== "ALL") list = list.filter(e => t(e.customer) === t(custVal));
       return list;
     }
-
     function rebuildDBSR() {
       const dbVal = $db().value;
       let list = data.slice();
       if (dbVal !== "ALL") list = list.filter(e => t(e.db) === t(dbVal));
       populateSelect($dbsr(), uniqSorted(list.map(e => e.dbsr)), true);
     }
-
     function rebuildBeat() {
       const dbVal = $db().value, dbsrVal = $dbsr().value;
       let list = data.slice();
@@ -236,12 +371,10 @@
       if (dbsrVal !== "ALL") list = list.filter(e => t(e.dbsr) === t(dbsrVal));
       populateSelect($beat(), uniqSorted(list.map(e => e.beat)), true);
     }
-
     function rebuildCustomer() {
       const list = filteredList(); // uses current DB/DBSR/Beat
-      populateSelect($cust(), uniqSorted(list.map(e => e.customer)), false); // don't keep value on beat change
+      populateSelect($cust(), uniqSorted(list.map(e => e.customer)), false);
     }
-
     function applyFiltersAndRender() {
       const list = filteredList();
       renderMarkers(list);
@@ -255,44 +388,46 @@
       data = raw.map(r => ({
         db:       t(getVal(r, CANDS.DB)),
         dbsr:     t(getVal(r, CANDS.DBSR)),
-        beat:     t(getVal(r, CANDS.BEAT)),      // supports “Beat Name” or “Beat”
+        beat:     t(getVal(r, CANDS.BEAT)),     // supports "Beat Name" or "Beat"
         customer: t(getVal(r, CANDS.CUSTOMER)),
         lat:      n(getVal(r, CANDS.LAT)),
         lon:      n(getVal(r, CANDS.LON)),
       }));
 
       populateSelect($db(), uniqSorted(data.map(e => e.db)), true);
-      rebuildDBSR();
-      rebuildBeat();
-      rebuildCustomer();
+      rebuildDBSR(); rebuildBeat(); rebuildCustomer();
       applyFiltersAndRender();
     }
 
     // Event wiring with selection preservation
     $db().addEventListener("change", () => {
-      rebuildDBSR();    // keep dbsr if still valid
-      rebuildBeat();    // keep beat if still valid
-      rebuildCustomer();// customers rebuilt for new context
-      applyFiltersAndRender();
+      rebuildDBSR(); rebuildBeat(); rebuildCustomer(); applyFiltersAndRender();
     });
-
     $dbsr().addEventListener("change", () => {
-      rebuildBeat();     // keep beat if still valid under new dbsr
-      rebuildCustomer(); // rebuild customers
-      applyFiltersAndRender();
+      rebuildBeat(); rebuildCustomer(); applyFiltersAndRender();
     });
-
     $beat().addEventListener("change", () => {
-      // DO NOT rebuild the Beat select here (would lose selection)
-      rebuildCustomer();  // only rebuild customers for the chosen beat
-      applyFiltersAndRender();
+      rebuildCustomer(); applyFiltersAndRender();
     });
+    $cust().addEventListener("change", () => applyFiltersAndRender());
 
-    $cust().addEventListener("change", () => {
-      applyFiltersAndRender();
+    // Header buttons
+    document.getElementById("useMyLocation").addEventListener("click", () => {
+      if (userLatLng) { map.setCenter(userLatLng); map.setZoom(14); }
+      else alert("Couldn't access your location yet. Please allow location permissions.");
     });
+    const toggleBtn = document.getElementById("toggleFilters");
+    const toggleBtn2 = document.getElementById("toggleFilters2");
+    function toggleFilters(){
+      const panel = $filtersPanel();
+      panel.classList.toggle("collapsed");
+      const open = !panel.classList.contains("collapsed");
+      toggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+    toggleBtn.addEventListener("click", toggleFilters);
+    if (toggleBtn2) toggleBtn2.addEventListener("click", toggleFilters);
 
-    // Kick off
+    // Boot
     initData();
   </script>
 
