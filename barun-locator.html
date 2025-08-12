@@ -8,18 +8,16 @@
     body { font-family: Arial, sans-serif; padding: 20px; max-width: 1000px; margin: auto; background: #f5f9ff; }
     h2 { text-align: center; color: #004080; margin: 8px 0 16px; }
 
-    /* Controls */
     .controls { display: grid; gap: 12px; grid-template-columns: 1fr; }
     @media (min-width: 860px) { .controls { grid-template-columns: repeat(4, 1fr); } }
 
     label { font-weight: bold; display: block; margin-bottom: 6px; }
-    select, input[type="text"] {
+    select {
       width: 100%; padding: 10px; font-size: 15px;
       border: 1px solid #d0d0d0; border-radius: 6px; background: #fff; box-sizing: border-box;
     }
 
     #map { width: 100%; height: 460px; border-radius: 10px; margin: 16px 0 20px; background: #fff; }
-
     #infoPanel {
       background: #fff; border: 1px solid #d0d0d0; border-radius: 8px;
       padding: 14px; line-height: 1.6; font-size: 15px;
@@ -27,22 +25,9 @@
 
     a { color: #0066cc; text-decoration: none; }
     a:hover { text-decoration: underline; }
-
-    .nav { text-align:center; margin-bottom: 14px; font-size: 16px; }
-    .nav a { margin: 0 6px; }
-    .button {
-      display:inline-block; padding: 9px 12px; background:#007BFF; color:#fff; border-radius:6px; text-decoration:none;
-    }
-    .button:hover { background:#0056b3; }
   </style>
 </head>
 <body>
-
-  <div class="nav">
-    <a href="index.html">🔁 Regular Store Locator</a> |
-    <a href="index2.html">📍 GPS Distance View</a> |
-    <a href="barun-locator.html" class="button">Barun Locator</a>
-  </div>
 
   <h2>🗺️ Barun – DB → DBSR → Beat → Customer</h2>
 
@@ -70,31 +55,23 @@
   <div id="infoPanel">Pick filters to view outlets. Click a marker to see details.</div>
 
   <script>
-    // Sheet: 1Cx09yjWN8lju1jZENNuMB4nLdEV1NDTay_miEc6r0Ys, Tab name: Barun
+    // Pulls the "Barun" tab directly
     const sheetURL = "https://opensheet.vercel.app/1Cx09yjWN8lju1jZENNuMB4nLdEV1NDTay_miEc6r0Ys/Barun";
 
-    // Column mapping for Barun:
-    // B: DB NAME, D: Customer Name, I: Longitude, J: Latitude, L: DBSR name, M: Beat
-    const COL = {
-      DB: "DB NAME",
-      CUSTOMER: "Customer Name",
-      LON: "Longitude",
-      LAT: "Latitude",
-      DBSR: "DBSR name",
-      BEAT: "Beat"
-    };
-
-    let rawData = [];
+    // Normalized data array: {db, dbsr, beat, customer, lat, lon}
+    let data = [];
     let map, infoWindow;
     let markers = [];
-    let userMarker = null;
-    let userLatLng = null;
+    let userMarker = null, userLatLng = null;
 
-    const $db = () => document.getElementById("dbSelect");
+    const $db   = () => document.getElementById("dbSelect");
     const $dbsr = () => document.getElementById("dbsrSelect");
     const $beat = () => document.getElementById("beatSelect");
     const $cust = () => document.getElementById("customerSelect");
     const $info = () => document.getElementById("infoPanel");
+
+    const t = v => (v == null ? "" : String(v).trim());
+    const n = v => { const x = parseFloat(v); return Number.isFinite(x) ? x : NaN; };
 
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
@@ -106,39 +83,24 @@
       infoWindow = new google.maps.InfoWindow();
 
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          pos => {
-            userLatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            userMarker = new google.maps.Marker({
-              position: userLatLng,
-              map,
-              title: "Your Location",
-              icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                scale: 8,
-                fillColor: "#007BFF",
-                fillOpacity: 1,
-                strokeWeight: 2,
-                strokeColor: "#ffffff"
-              }
-            });
-          },
-          () => {}
-        );
+        navigator.geolocation.getCurrentPosition(pos => {
+          userLatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          userMarker = new google.maps.Marker({
+            position: userLatLng, map, title: "Your Location",
+            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#007BFF", fillOpacity: 1, strokeWeight: 2, strokeColor: "#ffffff" }
+          });
+        }, () => {});
       }
     }
 
-    function clearMarkers() {
-      markers.forEach(m => m.setMap(null));
-      markers = [];
-    }
+    function clearMarkers(){ markers.forEach(m => m.setMap(null)); markers = []; }
 
     function fitToMarkers(includeUser = true) {
       const bounds = new google.maps.LatLngBounds();
-      let hasAny = false;
-      markers.forEach(m => { bounds.extend(m.getPosition()); hasAny = true; });
-      if (includeUser && userLatLng) { bounds.extend(userLatLng); hasAny = true; }
-      if (hasAny) {
+      let any = false;
+      markers.forEach(m => { bounds.extend(m.getPosition()); any = true; });
+      if (includeUser && userLatLng) { bounds.extend(userLatLng); any = true; }
+      if (any) {
         map.fitBounds(bounds);
         google.maps.event.addListenerOnce(map, "bounds_changed", () => {
           if (map.getZoom() > 15) map.setZoom(15);
@@ -147,55 +109,41 @@
     }
 
     function makeMarker(entry) {
-      const lat = parseFloat(entry[COL.LAT]);
-      const lng = parseFloat(entry[COL.LON]);
-      if (!isFinite(lat) || !isFinite(lng)) return null;
-
-      const name = entry[COL.CUSTOMER] || "(No name)";
-      const beat = entry[COL.BEAT] || "-";
-      const dbsr = entry[COL.DBSR] || "-";
-      const db = entry[COL.DB] || "-";
-      const gmaps = `https://www.google.com/maps?q=${lat},${lng}`;
-
+      if (!Number.isFinite(entry.lat) || !Number.isFinite(entry.lon)) return null;
+      const gmaps = `https://www.google.com/maps?q=${entry.lat},${entry.lon}`;
       const marker = new google.maps.Marker({
         map,
-        position: { lat, lng },
-        title: name,
+        position: { lat: entry.lat, lng: entry.lon },
+        title: entry.customer || "(No name)",
       });
-
       marker.addListener("click", () => {
         infoWindow.setContent(`
           <div style="min-width:220px">
-            <strong>${name}</strong><br/>
-            DB: ${escapeHtml(db)}<br/>
-            DBSR: ${escapeHtml(dbsr)}<br/>
-            Beat: ${escapeHtml(beat)}<br/>
+            <strong>${escapeHtml(entry.customer || "")}</strong><br/>
+            DB: ${escapeHtml(entry.db || "-")}<br/>
+            DBSR: ${escapeHtml(entry.dbsr || "-")}<br/>
+            Beat: ${escapeHtml(entry.beat || "-")}<br/>
             <a href="${gmaps}" target="_blank">Open in Google Maps</a>
           </div>
         `);
         infoWindow.open(map, marker);
 
-        // also set Customer dropdown to this one
-        const custSel = document.getElementById('customerSelect');
+        // select in customer dropdown if present
+        const custSel = document.getElementById("customerSelect");
         if (custSel) {
-          const optToSelect = [...custSel.options].find(o => o.value === name);
-          if (optToSelect) custSel.value = name;
+          const opt = [...custSel.options].find(o => o.value === (entry.customer || ""));
+          if (opt) custSel.value = entry.customer || "";
         }
         renderInfoPanel([entry]);
       });
-
       return marker;
-    }
-
-    function escapeHtml(s) {
-      return String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     }
 
     function renderMarkers(list) {
       clearMarkers();
-      list.forEach(entry => {
-        const marker = makeMarker(entry);
-        if (marker) markers.push(marker);
+      list.forEach(e => {
+        const m = makeMarker(e);
+        if (m) markers.push(m);
       });
       fitToMarkers(true);
     }
@@ -207,14 +155,13 @@
       }
       if (list.length === 1) {
         const e = list[0];
-        const lat = parseFloat(e[COL.LAT]), lng = parseFloat(e[COL.LON]);
-        const link = (isFinite(lat) && isFinite(lng)) ? `https://www.google.com/maps?q=${lat},${lng}` : "#";
+        const link = (Number.isFinite(e.lat) && Number.isFinite(e.lon)) ? `https://www.google.com/maps?q=${e.lat},${e.lon}` : "#";
         $info().innerHTML = `
-          <strong>${escapeHtml(e[COL.CUSTOMER])}</strong><br/>
-          DB: ${escapeHtml(e[COL.DB])}<br/>
-          DBSR: ${escapeHtml(e[COL.DBSR])}<br/>
-          Beat: ${escapeHtml(e[COL.BEAT])}<br/>
-          ${isFinite(lat) ? `Lat: ${lat}` : ""} ${isFinite(lng) ? ` | Lon: ${lng}` : ""}<br/>
+          <strong>${escapeHtml(e.customer || "")}</strong><br/>
+          DB: ${escapeHtml(e.db || "-")}<br/>
+          DBSR: ${escapeHtml(e.dbsr || "-")}<br/>
+          Beat: ${escapeHtml(e.beat || "-")}<br/>
+          ${Number.isFinite(e.lat) ? `Lat: ${e.lat}` : ""} ${Number.isFinite(e.lon) ? ` | Lon: ${e.lon}` : ""}<br/>
           <a href="${link}" target="_blank">Open in Google Maps</a>
         `;
       } else {
@@ -222,119 +169,87 @@
       }
     }
 
-    function uniqueSorted(arr) {
-      return [...new Set(arr.filter(Boolean))].sort((a, b) =>
-        String(a).localeCompare(String(b), undefined, { sensitivity: 'base' })
-      );
+    const escapeHtml = s => String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+    const uniqSorted = arr => [...new Set(arr.filter(v => t(v) !== ""))].sort((a,b)=>String(a).localeCompare(String(b),undefined,{sensitivity:'base'}));
+
+    function populateSelect(el, values) {
+      el.innerHTML = '<option value="ALL">All</option>' + values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
     }
 
     function applyFilters() {
-      const db = $db().value;
-      const dbsr = $dbsr().value;
-      const beat = $beat().value;
-      const cust = $cust().value;
+      const dbVal   = $db().value;
+      const dbsrVal = $dbsr().value;
+      const beatVal = $beat().value;
+      const custVal = $cust().value;
 
-      let list = rawData.slice();
-
-      if (db !== "ALL")  list = list.filter(r => (r[COL.DB] || "").toString() === db);
-      if (dbsr !== "ALL") list = list.filter(r => (r[COL.DBSR] || "").toString() === dbsr);
-      if (beat !== "ALL") list = list.filter(r => (r[COL.BEAT] || "").toString() === beat);
-      if (cust !== "ALL") list = list.filter(r => (r[COL.CUSTOMER] || "").toString() === cust);
+      let list = data.slice();
+      if (dbVal   !== "ALL") list = list.filter(e => t(e.db)   === t(dbVal));
+      if (dbsrVal !== "ALL") list = list.filter(e => t(e.dbsr) === t(dbsrVal));
+      if (beatVal !== "ALL") list = list.filter(e => t(e.beat) === t(beatVal));
+      if (custVal !== "ALL") list = list.filter(e => t(e.customer) === t(custVal));
 
       renderMarkers(list);
       renderInfoPanel(list);
     }
 
-    function repopulateDownstream() {
-      // Rebuild DBSR, Beat, Customer options based on current upstream filters
-      const db = $db().value;
+    function repopulateDownstream(from = "db") {
+      // Rebuild downstream selects based on current upstream selections
+      const dbVal   = $db().value;
+      const dbsrVal = $dbsr().value;
 
-      let list = rawData.slice();
-      if (db !== "ALL") list = list.filter(r => (r[COL.DB] || "").toString() === db);
+      let list = data.slice();
+      if (dbVal   !== "ALL") list = list.filter(e => t(e.db)   === t(dbVal));
 
-      // DBSR
-      const dbsrVals = uniqueSorted(list.map(r => r[COL.DBSR] || ""));
-      $dbsr().innerHTML = `<option value="ALL">All</option>` + dbsrVals.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
+      if (from === "db") {
+        // rebuild DBSR, Beat, Customer
+        populateSelect($dbsr(), uniqSorted(list.map(e => e.dbsr)));
+        // fallthrough to rebuild Beat and Customer using current (possibly reset) dbsrVal
+      }
 
-      // Now apply DBSR filter to build Beat
-      const dbsr = $dbsr().value === "ALL" ? "ALL" : $dbsr().value;
       let list2 = list.slice();
-      if (dbsr !== "ALL") list2 = list2.filter(r => (r[COL.DBSR] || "").toString() === dbsr);
+      const _dbsr = $dbsr().value;
+      if (_dbsr !== "ALL") list2 = list2.filter(e => t(e.dbsr) === t(_dbsr));
+      populateSelect($beat(), uniqSorted(list2.map(e => e.beat)));
 
-      const beatVals = uniqueSorted(list2.map(r => r[COL.BEAT] || ""));
-      $beat().innerHTML = `<option value="ALL">All</option>` + beatVals.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
-
-      // Now apply Beat filter to build Customer
-      const beat = $beat().value === "ALL" ? "ALL" : $beat().value;
       let list3 = list2.slice();
-      if (beat !== "ALL") list3 = list3.filter(r => (r[COL.BEAT] || "").toString() === beat);
-
-      const custVals = uniqueSorted(list3.map(r => r[COL.CUSTOMER] || ""));
-      $cust().innerHTML = `<option value="ALL">All</option>` + custVals.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
+      const _beat = $beat().value;
+      if (_beat !== "ALL") list3 = list3.filter(e => t(e.beat) === t(_beat));
+      populateSelect($cust(), uniqSorted(list3.map(e => e.customer)));
     }
 
     async function initData() {
       const res = await fetch(sheetURL);
-      rawData = await res.json();
+      const raw = await res.json();
 
-      // Build top-level DB list
-      const dbVals = uniqueSorted(rawData.map(r => r[COL.DB] || ""));
-      $db().innerHTML = `<option value="ALL">All</option>` + dbVals.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
+      // Normalize once so filters are robust (trims + parses)
+      data = raw.map(r => ({
+        db:       t(r["DB NAME"]),
+        dbsr:     t(r["DBSR name"]),
+        beat:     t(r["Beat"]),          // <-- Column M used here
+        customer: t(r["Customer Name"]),
+        lat:      n(r["Latitude"]),
+        lon:      n(r["Longitude"]),
+      }));
 
-      // Populate the rest once
-      repopulateDownstream();
+      populateSelect($db(), uniqSorted(data.map(e => e.db)));
+      repopulateDownstream("db");
       applyFilters();
     }
 
-    // Wire up events
+    // Event wiring
     document.addEventListener("change", (e) => {
-      if (e.target === $db()) {
-        repopulateDownstream();
-        applyFilters();
-      } else if (e.target === $dbsr() || e.target === $beat() || e.target === $cust()) {
-        // If a mid-level filter changed, rebuild lower levels
-        if (e.target === $dbsr()) {
-          // Rebuild Beat and Customer
-          const db = $db().value;
-          let list = rawData.slice();
-          if (db !== "ALL") list = list.filter(r => (r[COL.DB] || "").toString() === db);
-
-          const dbsr = $dbsr().value;
-          let list2 = list.slice();
-          if (dbsr !== "ALL") list2 = list2.filter(r => (r[COL.DBSR] || "").toString() === dbsr);
-
-          const beatVals = uniqueSorted(list2.map(r => r[COL.BEAT] || ""));
-          $beat().innerHTML = `<option value="ALL">All</option>` + beatVals.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
-
-          const beat = $beat().value;
-          let list3 = list2.slice();
-          if (beat !== "ALL") list3 = list3.filter(r => (r[COL.BEAT] || "").toString() === beat);
-
-          const custVals = uniqueSorted(list3.map(r => r[COL.CUSTOMER] || ""));
-          $cust().innerHTML = `<option value="ALL">All</option>` + custVals.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
-        }
-
-        if (e.target === $beat()) {
-          // Rebuild Customer
-          const db = $db().value, dbsr = $dbsr().value, beat = $beat().value;
-          let list = rawData.slice();
-          if (db !== "ALL") list = list.filter(r => (r[COL.DB] || "").toString() === db);
-          if (dbsr !== "ALL") list = list.filter(r => (r[COL.DBSR] || "").toString() === dbsr);
-          if (beat !== "ALL") list = list.filter(r => (r[COL.BEAT] || "").toString() === beat);
-
-          const custVals = uniqueSorted(list.map(r => r[COL.CUSTOMER] || ""));
-          $cust().innerHTML = `<option value="ALL">All</option>` + custVals.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
-        }
-
-        applyFilters();
-      }
+      if (e.target === $db())   { repopulateDownstream("db");   applyFilters(); }
+      if (e.target === $dbsr()) { repopulateDownstream("dbsr"); applyFilters(); }
+      if (e.target === $beat()) { repopulateDownstream("beat"); applyFilters(); }
+      if (e.target === $cust()) { applyFilters(); }
     });
 
-    // Start
+    // Kick off
     initData();
   </script>
 
-  <!-- Uses the Google Maps JS API key you shared earlier -->
+  <!-- Google Maps JS API key (yours) -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDmJhoaeBL3cDKrucjCZjmNm2uYi_WguL8&callback=initMap" async defer></script>
 </body>
 </html>
