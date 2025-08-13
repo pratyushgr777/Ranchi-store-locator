@@ -4,126 +4,174 @@
   <meta charset="utf-8" />
   <title>Sales Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Charts -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
   <style>
     :root{
-      --bg:#faf7f7; --text:#1f1f1f; --muted:#626262; --card:#fff; --stroke:#e9d9d9;
-      --accent:#c62828; --accent2:#e53935; --green:#17bf63;
-      --radius:14px; --shadow:0 8px 26px rgba(0,0,0,.08);
+      /* Techy dark theme */
+      --bg:#0b1220;          /* deep navy */
+      --panel:#0f172a;       /* slate 900 */
+      --card:#0b1220;        /* match bg for seamless cards */
+      --surface:#111827;     /* slate 800 */
+      --stroke:#1f2937;      /* slate 700 */
+      --text:#e5e7eb;        /* gray 200 */
+      --muted:#94a3b8;       /* slate 400 */
+      --accent:#06b6d4;      /* cyan 500 */
+      --accent2:#22d3ee;     /* cyan 400 */
+      --accent3:#0ea5e9;     /* sky 500 */
+      --good:#22c55e;        /* green */
+      --warn:#f59e0b;        /* amber */
+      --radius:14px;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+      --glow:0 0 0 1px rgba(34,211,238,.25), 0 0 22px rgba(14,165,233,.18);
     }
     *{ box-sizing:border-box }
     html,body{ height:100% }
     body{
       margin:0;
       background:
-        radial-gradient(800px 500px at 10% -10%, #ffebee, transparent 60%),
-        radial-gradient(700px 500px at 110% 0%, #fff3f3, transparent 60%),
+        radial-gradient(1200px 600px at -10% -10%, rgba(3,105,161,.18), transparent 60%),
+        radial-gradient(1400px 700px at 110% 0%, rgba(8,145,178,.18), transparent 60%),
         var(--bg);
       color:var(--text);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
       line-height:1.45;
     }
 
     /* Header */
     .appbar{
       position:sticky; top:0; z-index:50;
-      background:rgba(255,255,255,.9);
-      backdrop-filter:saturate(140%) blur(6px);
+      background:rgba(2,6,23,.7); /* slate-950/70 */
+      backdrop-filter: blur(8px) saturate(140%);
       border-bottom:1px solid var(--stroke);
     }
     .appbar-inner{
       display:flex; align-items:center; justify-content:space-between;
       max-width:1200px; margin:0 auto; padding:12px 16px;
     }
-    .title{ display:flex; align-items:center; gap:10px; color:var(--accent); font-weight:800 }
-    .dot{ width:10px; height:10px; border-radius:50%;
-      background: radial-gradient(circle at 35% 35%, var(--accent2), var(--accent));
-      box-shadow:0 0 10px rgba(230,57,53,.55);
+    .title{ display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.2px }
+    .title .dot{ width:10px; height:10px; border-radius:50%;
+      background: radial-gradient(circle at 35% 35%, var(--accent2), var(--accent3));
+      box-shadow: 0 0 18px rgba(34,211,238,.65);
     }
-    .sub{ color:var(--muted); font-size:13px }
+    .period{ color:var(--muted); font-size:13px; display:flex; gap:8px; align-items:center; }
     .pill{
-      display:inline-flex; align-items:center; gap:6px;
-      background:#fff; border:1px solid var(--stroke); border-radius:999px;
-      padding:6px 10px; box-shadow:var(--shadow); font-size:13px; color:#8b1212;
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 10px; border-radius:999px; font-size:12px;
+      background: linear-gradient(180deg, rgba(30,41,59,.9), rgba(15,23,42,.9));
+      border:1px solid var(--stroke); box-shadow: var(--glow);
+      color:#cbd5e1;
     }
 
     /* Layout */
-    .wrap{ max-width:1200px; margin:16px auto; padding:0 16px 24px; display:grid; gap:16px }
+    .wrap{ max-width:1200px; margin:16px auto; padding:0 16px 30px; display:grid; gap:16px }
 
-    /* Panels & cards */
-    .panel,.card{ border:1px solid var(--stroke); border-radius:var(--radius); background:var(--card); box-shadow:var(--shadow); overflow:hidden }
-    .panel-h,.card-h{ padding:10px 14px; border-bottom:1px solid var(--stroke); background:linear-gradient(180deg,#fff,#fff6f6); font-weight:700; color:var(--accent) }
-    .panel-b,.card-b{ padding:12px }
+    /* Panels */
+    .panel{
+      border:1px solid var(--stroke);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(17,24,39,.95), rgba(2,6,23,.95));
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .panel-h{
+      padding:12px 16px;
+      border-bottom:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(2,6,23,.9), rgba(17,24,39,.9));
+      font-weight:800; color:var(--accent2); letter-spacing:.2px;
+    }
+    .panel-b{ padding:14px }
 
     /* Filters */
-    .grid{ display:grid; gap:10px }
+    .grid{ display:grid; gap:12px }
     @media (min-width:860px){ .grid-3{ grid-template-columns: repeat(3, 1fr) } }
-    .field label{ display:block; font-size:13px; color:var(--muted); margin:6px 2px }
+    .field label{ display:block; font-size:12px; color:var(--muted); margin:6px 4px }
     select{
-      width:100%; padding:12px; font-size:16px; color:#111;
-      background:#f4f6fb; border:1px solid #d9dfe8; border-radius:10px; outline:none;
+      width:100%; padding:12px; font-size:16px; color:#dbeafe;
+      background: linear-gradient(180deg, rgba(2,6,23,.8), rgba(15,23,42,.8));
+      border:1px solid var(--stroke); border-radius:12px; outline:none;
+      box-shadow: var(--glow);
     }
-    select:focus{ border-color:#f5a0a0; box-shadow:0 0 0 3px #ffe3e3 }
-    select option{ background:#fff; color:#000 }
+    select:focus{ border-color:#0891b2; box-shadow: 0 0 0 3px rgba(34,211,238,.15) }
+    select option{ background:#0b1220; color:#e2e8f0 }
+
+    .hint{ color:var(--muted); font-size:12px; margin-top:6px }
 
     /* KPI tiles */
     .kpis{ display:grid; gap:12px }
     @media (min-width:860px){ .kpis-5{ grid-template-columns: repeat(5, 1fr) } }
     .kpi{
-      border:1px solid var(--stroke); border-radius:12px; background:var(--card); box-shadow:var(--shadow); padding:12px;
-      display:flex; flex-direction:column; gap:6px;
+      background: linear-gradient(180deg, rgba(2,6,23,.7), rgba(17,24,39,.7));
+      border:1px solid var(--stroke); border-radius:12px; padding:12px;
+      box-shadow: var(--glow);
     }
-    .kpi .label{ font-size:12px; color:var(--muted) }
-    .kpi .value{ font-size:20px; font-weight:800 }
-    .kpi .hint{ font-size:12px; color:var(--muted) }
+    .kpi .label{ font-size:12px; color:#a3b1c6 }
+    .kpi .value{ font-size:20px; font-weight:800; margin-top:4px }
+    .kpi .sub{ font-size:12px; color:var(--muted) }
 
     /* ECO buckets */
     .eco{ display:grid; gap:12px }
     @media (min-width:860px){ .eco{ grid-template-columns: 1fr 1fr } }
-    .eco-card{ border:1px solid var(--stroke); border-radius:12px; background:#fff; box-shadow:var(--shadow); padding:12px }
-    .eco-title{ font-weight:700; color:var(--accent); margin-bottom:6px }
-    .eco-row{ display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border:1px dashed #f0dada; border-radius:10px; margin-top:8px }
-    .eco-row .name{ color:var(--muted) }
+    .eco-card{
+      border:1px solid var(--stroke); border-radius:12px; padding:12px;
+      background: linear-gradient(180deg, rgba(2,6,23,.7), rgba(17,24,39,.7));
+      box-shadow: var(--glow);
+    }
+    .eco-title{ font-weight:800; color:var(--accent2); margin-bottom:6px }
+    .eco-row{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:8px 10px; border:1px dashed rgba(148,163,184,.3); border-radius:10px; margin-top:8px;
+      background: rgba(2,6,23,.5);
+    }
+    .eco-row .name{ color:#cbd5e1 }
     .eco-row .count{ font-weight:800 }
 
-    /* Brand blocks */
-    .brand-grid{ display:grid; gap:14px }
-    @media (min-width:860px){ .brand-grid{ grid-template-columns: 1fr 1fr } }
-    .brand-card{ border:1px solid var(--stroke); border-radius:12px; background:#fff; box-shadow:var(--shadow); padding:12px }
-    .brand-title{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px }
-    .brand-title .name{ font-weight:800; color:var(--accent) }
-    .badge{ font-size:11px; color:#8b1212; background:#fff4f4; border:1px solid #f6cece; padding:2px 8px; border-radius:999px }
-    .chart-row{ display:grid; gap:10px }
-    @media (min-width:680px){ .chart-row{ grid-template-columns: repeat(3, 1fr) } }
-    .chart-box{ border:1px solid var(--stroke); border-radius:12px; background:#fff; padding:10px; text-align:center }
-    .chart-box h4{ margin:4px 0 8px; font-size:14px; color:#333 }
+    /* Brand blocks (vertical) */
+    .brand{ display:grid; gap:16px }
+    .brand-card{
+      border:1px solid var(--stroke); border-radius:14px; padding:12px;
+      background: linear-gradient(180deg, rgba(2,6,23,.7), rgba(17,24,39,.7));
+      box-shadow: var(--glow);
+    }
+    .brand-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px }
+    .brand-name{ font-weight:900; color:#e2e8f0; letter-spacing:.2px }
+    .badge{ font-size:11px; color:#67e8f9; background: rgba(8,145,178,.15); border:1px solid rgba(34,211,238,.25); padding:4px 8px; border-radius:999px }
 
-    .small{ color:var(--muted); font-size:13px }
-    .disclaimer{ color:#8b1212; font-size:12px; margin-top:6px }
+    /* Meters */
+    .meter{ display:grid; gap:8px; margin:8px 0 14px }
+    .meter-head{ display:flex; align-items:center; justify-content:space-between }
+    .meter-title{ font-size:14px; color:#cbd5e1; font-weight:600 }
+    .meter-pct{ font-weight:800; color:#67e8f9 }
+    .bar{
+      width:100%; height:12px; border-radius:999px; overflow:hidden;
+      background: linear-gradient(90deg, rgba(30,41,59,.8), rgba(15,23,42,.8));
+      border:1px solid rgba(148,163,184,.25);
+    }
+    .fill{
+      height:100%; width:0%;
+      background: linear-gradient(90deg, rgba(34,211,238,.9), rgba(14,165,233,.9));
+      box-shadow: 0 0 12px rgba(56,189,248,.35);
+      transition: width .35s ease;
+    }
+    .nums{ font-size:12px; color:#a3b1c6 }
+
+    .disclaimer{ color:#94a3b8; font-size:12px; margin-top:6px }
   </style>
 </head>
 <body>
   <!-- Header -->
   <header class="appbar">
     <div class="appbar-inner">
-      <div class="title">
-        <span class="dot"></span><span>Sales Dashboard</span>
+      <div class="title"><span class="dot"></span><span>Sales Dashboard</span></div>
+      <div class="period">
+        <span class="pill" id="periodPill">Loading…</span>
+        <span class="pill" id="updatedPill" style="display:none;"></span>
       </div>
-      <div class="sub" id="periodLabel">Loading period…</div>
     </div>
   </header>
 
   <main class="wrap">
-    <!-- Data sources summary -->
-    <section class="panel">
-      <div class="panel-h">Data sources</div>
-      <div class="panel-b" id="sourceStatus" class="small"></div>
-    </section>
-
     <!-- Filters -->
     <section class="panel">
-      <div class="panel-h">Filters (from GTM)</div>
+      <div class="panel-h">Select Rep (from GTM)</div>
       <div class="panel-b">
         <div class="grid grid-3">
           <div class="field">
@@ -139,104 +187,111 @@
             <select id="dbsrSel"><option value="">Select DBSR</option></select>
           </div>
         </div>
-        <div id="keyInfo" class="small" style="margin-top:8px;display:none;"></div>
+        <div class="hint" id="keyInfo" style="display:none; margin-top:10px;"></div>
       </div>
     </section>
 
-    <!-- Top KPIs (from GTM) -->
+    <!-- GTM KPIs -->
     <section class="panel">
-      <div class="panel-h">Basic Details</div>
+      <div class="panel-h">DBSR Snapshot</div>
       <div class="panel-b">
         <div class="kpis kpis-5">
-          <div class="kpi"><div class="label">OMR (Total Outlets)</div><div class="value" id="kpiO">—</div></div>
-          <div class="kpi"><div class="label">Geo-tagged Count</div><div class="value" id="kpiX">—</div></div>
-          <div class="kpi"><div class="label">HHT %</div><div class="value" id="kpiP">—</div><div class="hint">Hand-held terminal %</div></div>
-          <div class="kpi"><div class="label">Avg Geo Bills</div><div class="value" id="kpiV">—</div></div>
-          <div class="kpi"><div class="label">% Geo-Tagged vs Geo-Fenced</div><div class="value" id="kpiAC">—</div></div>
+          <div class="kpi"><div class="label">OMR (Total Outlets)</div><div class="value" id="kpiOMR">—</div></div>
+          <div class="kpi"><div class="label">Geo-tagged Count</div><div class="value" id="kpiGeo">—</div></div>
+          <div class="kpi"><div class="label">HHT %</div><div class="value" id="kpiHHT">—</div><div class="sub">Hand-held terminal</div></div>
+          <div class="kpi"><div class="label">Avg Geo Bills</div><div class="value" id="kpiAvg">—</div></div>
+          <div class="kpi"><div class="label">% Geo-Tagged vs Geo-Fenced</div><div class="value" id="kpiFence">—</div></div>
         </div>
-      </div>
-    </section>
 
-    <!-- ECO infographic -->
-    <section class="panel">
-      <div class="panel-h">ECO Summary (from GTM)</div>
-      <div class="panel-b">
-        <div class="eco">
+        <div class="eco" style="margin-top:12px;">
           <div class="eco-card">
             <div class="eco-title">Non-Geo ECO</div>
             <div class="eco-row"><div class="name">&gt; 0 bills</div><div class="count" id="ecoY">—</div></div>
             <div class="eco-row"><div class="name">&ge; 800 bills</div><div class="count" id="ecoZ">—</div></div>
-            <div class="small" style="margin-top:6px;">Counts not adhered to geo-tagging</div>
+            <div class="hint">Counts not adhered to geo-tagging</div>
           </div>
           <div class="eco-card">
             <div class="eco-title">Geo-adhered ECO</div>
             <div class="eco-row"><div class="name">&gt; 0 bills</div><div class="count" id="ecoAA">—</div></div>
             <div class="eco-row"><div class="name">&ge; 800 bills</div><div class="count" id="ecoAB">—</div></div>
-            <div class="small" style="margin-top:6px;">Counts adhered to geo-tagging</div>
+            <div class="hint">Counts adhered to geo-tagging</div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Brand Activation -->
+    <!-- Brand Activation (vertical) -->
     <section class="panel">
       <div class="panel-h">Brand Activation — Current Month</div>
-      <div class="panel-b">
-        <div class="brand-grid">
-          <!-- Durex -->
-          <div class="brand-card">
-            <div class="brand-title">
-              <div class="name">Durex</div>
-              <div class="badge" id="durexFlag" style="display:none;"></div>
-            </div>
-            <div class="chart-row">
-              <div class="chart-box">
-                <h4>Overall</h4>
-                <canvas id="dxOverall"></canvas>
-                <div class="small" id="dxOverallText">—</div>
-              </div>
-              <div class="chart-box">
-                <h4>ECO</h4>
-                <canvas id="dxEco"></canvas>
-                <div class="small" id="dxEcoText">—</div>
-              </div>
-              <div class="chart-box">
-                <h4>ULS</h4>
-                <canvas id="dxUls"></canvas>
-                <div class="small" id="dxUlsText">—</div>
-              </div>
-            </div>
-            <div class="disclaimer" id="dxNote" style="display:none;"></div>
+      <div class="panel-b brand">
+
+        <!-- Durex -->
+        <div class="brand-card" id="durexCard">
+          <div class="brand-head">
+            <div class="brand-name">Durex</div>
+            <div class="badge" id="dxBadge" style="display:none;">No data this month</div>
           </div>
 
-          <!-- Mortein -->
-          <div class="brand-card">
-            <div class="brand-title">
-              <div class="name">Mortein</div>
-              <div class="badge" id="mtFlag" style="display:none;"></div>
+          <div class="meter" id="dxOverallBox">
+            <div class="meter-head">
+              <div class="meter-title">Overall Target vs Achieved</div>
+              <div class="meter-pct" id="dxOverallPct">—</div>
             </div>
-            <div class="chart-row">
-              <div class="chart-box">
-                <h4>Overall</h4>
-                <canvas id="mtOverall"></canvas>
-                <div class="small" id="mtOverallText">—</div>
-              </div>
-              <div class="chart-box">
-                <h4>ECO</h4>
-                <canvas id="mtEco"></canvas>
-                <div class="small" id="mtEcoText">—</div>
-              </div>
-              <div class="chart-box">
-                <h4>—</h4>
-                <div class="small">No ULS metrics for this brand.</div>
-              </div>
-            </div>
-            <div class="disclaimer" id="mtNote" style="display:none;"></div>
+            <div class="bar"><div class="fill"></div></div>
+            <div class="nums" id="dxOverallNums">Target — · Ach —</div>
           </div>
+
+          <div class="meter" id="dxEcoBox">
+            <div class="meter-head">
+              <div class="meter-title">ECO Target vs Achieved</div>
+              <div class="meter-pct" id="dxEcoPct">—</div>
+            </div>
+            <div class="bar"><div class="fill"></div></div>
+            <div class="nums" id="dxEcoNums">Target — · Ach —</div>
+          </div>
+
+          <div class="meter" id="dxUlsBox">
+            <div class="meter-head">
+              <div class="meter-title">ULS Target vs Achieved</div>
+              <div class="meter-pct" id="dxUlsPct">—</div>
+            </div>
+            <div class="bar"><div class="fill"></div></div>
+            <div class="nums" id="dxUlsNums">Target — · Ach —</div>
+          </div>
+
+          <div class="disclaimer" id="dxNote" style="display:none;"></div>
         </div>
+
+        <!-- Mortein -->
+        <div class="brand-card" id="morteinCard">
+          <div class="brand-head">
+            <div class="brand-name">Mortein</div>
+            <div class="badge" id="mtBadge" style="display:none;">No data this month</div>
+          </div>
+
+          <div class="meter" id="mtOverallBox">
+            <div class="meter-head">
+              <div class="meter-title">Value Target vs Achieved</div>
+              <div class="meter-pct" id="mtOverallPct">—</div>
+            </div>
+            <div class="bar"><div class="fill"></div></div>
+            <div class="nums" id="mtOverallNums">Target — · Ach —</div>
+          </div>
+
+          <div class="meter" id="mtEcoBox">
+            <div class="meter-head">
+              <div class="meter-title">ECO Target vs Achieved</div>
+              <div class="meter-pct" id="mtEcoPct">—</div>
+            </div>
+            <div class="bar"><div class="fill"></div></div>
+            <div class="nums" id="mtEcoNums">Target — · Ach —</div>
+          </div>
+
+          <div class="disclaimer" id="mtNote" style="display:none;"></div>
+        </div>
+
       </div>
     </section>
-
   </main>
 
   <script>
@@ -251,142 +306,92 @@
 
     /***** DOM *****/
     const $ = id => document.getElementById(id);
-    const sourceStatus = $("sourceStatus");
-    const tsiSel = $("tsiSel"); const dbSel = $("dbSel"); const dbsrSel = $("dbsrSel");
-    const keyInfo = $("keyInfo");
-    const kpiO = $("kpiO"), kpiX = $("kpiX"), kpiP = $("kpiP"), kpiV = $("kpiV"), kpiAC = $("kpiAC");
+    const periodPill = $("periodPill"), updatedPill = $("updatedPill");
+
+    const tsiSel = $("tsiSel"), dbSel = $("dbSel"), dbsrSel = $("dbsrSel"), keyInfo = $("keyInfo");
+
+    const kpiOMR = $("kpiOMR"), kpiGeo = $("kpiGeo"), kpiHHT = $("kpiHHT"), kpiAvg = $("kpiAvg"), kpiFence = $("kpiFence");
     const ecoY = $("ecoY"), ecoZ = $("ecoZ"), ecoAA = $("ecoAA"), ecoAB = $("ecoAB");
-    const periodLabel = $("periodLabel");
 
-    /* Brand DOM */
-    const dxOverall = $("dxOverall"), dxEco = $("dxEco"), dxUls = $("dxUls");
-    const dxOverallText = $("dxOverallText"), dxEcoText = $("dxEcoText"), dxUlsText = $("dxUlsText");
-    const dxNote = $("dxNote"), dxFlag = $("durexFlag");
+    // Durex elements
+    const dxBadge = $("dxBadge"), dxNote = $("dxNote");
+    const dxOverallBox = $("dxOverallBox"), dxOverallPct = $("dxOverallPct"), dxOverallNums = $("dxOverallNums");
+    const dxEcoBox = $("dxEcoBox"), dxEcoPct = $("dxEcoPct"), dxEcoNums = $("dxEcoNums");
+    const dxUlsBox = $("dxUlsBox"), dxUlsPct = $("dxUlsPct"), dxUlsNums = $("dxUlsNums");
 
-    const mtOverall = $("mtOverall"), mtEco = $("mtEco");
-    const mtOverallText = $("mtOverallText"), mtEcoText = $("mtEcoText");
-    const mtNote = $("mtNote"), mtFlag = $("mtFlag");
+    // Mortein elements
+    const mtBadge = $("mtBadge"), mtNote = $("mtNote");
+    const mtOverallBox = $("mtOverallBox"), mtOverallPct = $("mtOverallPct"), mtOverallNums = $("mtOverallNums");
+    const mtEcoBox = $("mtEcoBox"), mtEcoPct = $("mtEcoPct"), mtEcoNums = $("mtEcoNums");
 
     /***** STATE *****/
-    let GTM = []; let DUREX = []; let MORTEIN = [];
-    let charts = { dxOverall:null, dxEco:null, dxUls:null, mtOverall:null, mtEco:null };
+    let GTM = [], DUREX = [], MORTEIN = [];
 
     /***** HELPERS *****/
-    function esc(s){ return String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+    const esc = s => String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&gt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     const t = v => (v==null ? "" : String(v).trim());
-    const num = v => {
+    function toNum(v){
       if (v==null) return NaN;
       const s = String(v).replace(/[,₹\s]/g,"").replace(/%/g,"");
       const x = parseFloat(s);
       return Number.isFinite(x) ? x : NaN;
-    };
-    const fmtLakh = n => {
-      if (!Number.isFinite(n)) return "—";
-      return "₹ " + n.toLocaleString("en-IN",{ maximumFractionDigits:2 }) + " L";
-    };
-    const fmtPct = n => {
-      if (!Number.isFinite(n)) return "—";
-      return n.toFixed(1) + "%";
-    };
+    }
+    const fmtLakh = n => Number.isFinite(n) ? ("₹ " + n.toLocaleString("en-IN",{maximumFractionDigits:2}) + " L") : "—";
+    const fmtPct = n => Number.isFinite(n) ? (n.toFixed(1) + "%") : "—";
+    const uniq = arr => Array.from(new Set(arr.filter(x => t(x)!=="")));
 
-    function addSourceLine(name, ok, extra=""){
-      const line = document.createElement("div");
-      line.className = "small";
-      line.innerHTML = ok
-        ? `✅ ${esc(name)} connected ${extra ? " — " + esc(extra) : ""}`
-        : `❌ ${esc(name)} failed ${extra ? " — " + esc(extra) : ""}`;
-      sourceStatus.appendChild(line);
+    function setPillText(month, year, updated){
+      const label = (month && year) ? `${month} ${year}` :
+        new Date().toLocaleString("en-GB", { month:"long", year:"numeric" });
+      periodPill.textContent = `Period: ${label}`;
+      if (updated){
+        updatedPill.style.display = "inline-flex";
+        updatedPill.textContent = `Updated: ${updated}`;
+      }
     }
 
-    function groupUniq(arr){ return Array.from(new Set(arr.filter(v => t(v)!==""))); }
-
-    /** Sum metrics across multiple rows; also track if duplicates happened. */
-    function sumMetrics(rows, keys){
-      const sum = {}; let count = rows.length;
-      keys.forEach(k => sum[k] = 0);
-      rows.forEach(r => {
-        keys.forEach(k => { const x = num(r[k]); if (Number.isFinite(x)) sum[k]+=x; });
-      });
-      return { sum, multi: count>1, count };
+    function meterSet(box, pct){
+      const fill = box.querySelector(".fill");
+      const w = Math.max(0, Math.min(pct, 100));
+      fill.style.width = w + "%";
     }
 
-    /** Average metrics (for % like HHT %, AC, Avg Geo Bills) */
-    function avgMetrics(rows, keys){
-      const avg = {}; keys.forEach(k => avg[k] = 0);
-      let n = 0;
-      rows.forEach(r => {
-        let any=false;
-        keys.forEach(k => { const x = num(r[k]); if (Number.isFinite(x)) { avg[k]+=x; any=true; } });
-        if (any) n++;
-      });
-      if (n>0) keys.forEach(k => avg[k] = avg[k]/n);
-      return { avg, multi: rows.length>1, n };
+    function setOverall(boxEls, tgt, ach){
+      const [box, pctEl, numsEl] = boxEls;
+      const pct = (Number.isFinite(tgt) && tgt>0 && Number.isFinite(ach)) ? (ach/tgt*100) : NaN;
+      pctEl.textContent = fmtPct(pct);
+      numsEl.innerHTML = `Target <strong>${fmtLakh(tgt)}</strong> · Ach <strong>${fmtLakh(ach)}</strong>`;
+      meterSet(box, Number.isFinite(pct) ? pct : 0);
     }
 
-    /** Doughnut chart for target vs achieved */
-    function drawDonut(ctx, target, achieved, label, storeKey){
-      if (charts[storeKey]) charts[storeKey].destroy();
-      const tVal = Number.isFinite(target)?target:0;
-      const aVal = Number.isFinite(achieved)?achieved:0;
-      const rest = Math.max(tVal - aVal, 0);
-
-      charts[storeKey] = new Chart(ctx, {
-        type: "doughnut",
-        data: {
-          labels: ["Achieved","Gap"],
-          datasets: [{ data: [aVal, rest] }]
-        },
-        options: {
-          responsive:true, maintainAspectRatio:false,
-          plugins: {
-            legend: { position:"bottom" },
-            tooltip: {
-              callbacks: { label: (tt) => `${tt.label}: ${fmtLakh(tt.raw)}` }
-            },
-            title: { display:true, text: label }
-          },
-          cutout: "60%"
-        }
-      });
+    function sumRows(rows, keys){
+      const out = {}; keys.forEach(k=>out[k]=0);
+      rows.forEach(r => keys.forEach(k => { const val = toNum(r[k]); if (Number.isFinite(val)) out[k]+=val; }));
+      return out;
     }
 
-    /** Update brand text under charts */
-    function setBrandText(el, tgt, ach, pct){
-      const pctVal = Number.isFinite(pct) ? pct : (Number.isFinite(tgt)&&tgt!==0 && Number.isFinite(ach) ? (ach/tgt*100) : NaN);
-      el.innerHTML = `Target: <strong>${fmtLakh(tgt)}</strong> • Ach: <strong>${fmtLakh(ach)}</strong> • ${Number.isFinite(pctVal)?fmtPct(pctVal):"—"}`;
+    function avgRows(rows, keys){
+      const out = {}; const cnt = {}; keys.forEach(k=>{out[k]=0; cnt[k]=0});
+      rows.forEach(r => keys.forEach(k => { const val = toNum(r[k]); if (Number.isFinite(val)) { out[k]+=val; cnt[k]++; } }));
+      keys.forEach(k => { if (cnt[k]>0) out[k] = out[k]/cnt[k]; });
+      return out;
     }
 
-    /** Extract single GTM row set by TSI+DB+DBSR (could be multiple -> we aggregate) */
-    function findGtmRows(tsi, dist, name){
-      return GTM.filter(r =>
-        t(r["TSI"])===t(tsi) &&
-        t(r["Distributor Name"])===t(dist) &&
-        t(r["DBSR Name"])===t(name)
-      );
+    function findGtm(tsi, dist, name){
+      return GTM.filter(r => t(r["TSI"])===t(tsi) && t(r["Distributor Name"])===t(dist) && t(r["DBSR Name"])===t(name));
     }
-
-    /** Find brand rows by UNIQUE code */
-    function findBrandRows(arr, code){
-      return arr.filter(r => t(r["UNIQUE DBSR Code"])===t(code));
-    }
+    function byCode(arr, code){ return arr.filter(r => t(r["UNIQUE DBSR Code"])===t(code)); }
 
     /***** LOAD DATA *****/
-    async function fetchJSON(url){
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    }
+    async function jget(url){ const r = await fetch(url); if(!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }
 
-    async function loadAll(){
-      sourceStatus.innerHTML = "Connecting…";
-
-      // Basic data (month/year/last update)
+    async function boot(){
+      // Header info
       try{
-        const basic = await fetchJSON(URLS.basic);
+        const basic = await jget(URLS.basic);
         let month="", year="", updated="";
         if (Array.isArray(basic) && basic.length){
           const row = basic[0];
-          // try flexible key names
           for (const k in row){
             const key = k.toLowerCase();
             const val = t(row[k]);
@@ -395,250 +400,180 @@
             else if (key.includes("update") || key.includes("last")) updated = val;
           }
         }
-        const deviceNow = new Date();
-        const deviceMonth = deviceNow.toLocaleString("en-GB",{ month:"long", year:"numeric" });
-        const label = (month && year) ? `${month} ${year}` : deviceMonth;
-        periodLabel.innerHTML = `<span class="pill">Period: ${esc(label)}${updated?` • Updated: ${esc(updated)}`:""}</span>`;
-      }catch(e){
-        periodLabel.innerHTML = `<span class="pill">Period: ${new Date().toLocaleString("en-GB",{ month:"long", year:"numeric" })}</span>`;
-      }
-
-      sourceStatus.innerHTML = "";
+        setPillText(month, year, updated);
+      }catch{ setPillText("", "", ""); }
 
       // GTM
       try{
-        const gtm = await fetchJSON(URLS.gtm);
-        // Normalize expected headers (we rely on exact names shared)
+        const gtm = await jget(URLS.gtm);
         GTM = gtm.map(r => ({
           "UNIQUE DBSR Code": t(r["UNIQUE DBSR Code"]),
-          "TSI": t(r["TSI"] ?? r["E"] ?? r["TSI "]),
+          "TSI": t(r["TSI"] ?? r["E"]),
           "Distributor Name": t(r["Distributor Name"]),
           "DBSR Name": t(r["DBSR Name"]),
           "HHT %": t(r["HHT %"]),
           "Avg Geo Bills": t(r["Avg Geo Bills"]),
           "OMR": t(r["OMR"]),
-          "Geo Tagged Count": t(r["Geo Tagged Count"]) || t(r["Geo Tagged"]) || t(r["Geo Tagged count"]) || t(r["Geo Tagged Count "]) || t(r["X"]),
+          "Geo Tagged Count": t(r["Geo Tagged Count"]) || t(r["Geo Tagged"]) || t(r["Geo Tagged count"]) || t(r["X"]),
           ">0 Eco(Geo) Y": t(r[">0 Eco(Geo)"]) || t(r["Y"]) || t(r[">0 Eco (Geo)"]),
           ">=800 Eco(Geo) Z": t(r[">=800 Eco(Geo)"]) || t(r["Z"]) || t(r[">=800 Eco (Geo)"]),
           ">0 Eco(total) AA": t(r[">0 Eco(total)"]) || t(r["AA"]) || t(r[">0 Eco (total)"]),
           ">=800 Eco(total) AB": t(r[">=800 Eco(total)"]) || t(r["AB"]) || t(r[">=800 Eco (total)"]),
           "% Geo Tagged vs Geo Fencend": t(r["% Geo Tagged vs Geo Fencend"]) || t(r["% Geo Tagged vs Geo Fenced"]) || t(r["AC"])
         }));
-        addSourceLine("GTM", true, `${GTM.length} rows`);
+        // Build filters
+        const tsis = uniq(GTM.map(r=>r["TSI"])).sort((a,b)=>a.localeCompare(b));
+        tsiSel.innerHTML = `<option value="">Select TSI</option>` + tsis.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
       }catch(e){
-        addSourceLine("GTM", false, String(e));
+        tsiSel.innerHTML = `<option value="">Failed to load GTM</option>`;
       }
 
       // Durex
       try{
-        const dx = await fetchJSON(URLS.durex);
+        const dx = await jget(URLS.durex);
         DUREX = dx.map(r => ({
           "UNIQUE DBSR Code": t(r["UNIQUE DBSR Code"]),
           "TSI": t(r["TSI"]),
           "Distributor Name": t(r["Distributor Name"]),
           "DBSR Name": t(r["DBSR Name"]),
-          "Route Code": t(r["Route Code"]),
-          // Metrics (₹ Lakh)
           "TGT": t(r["TGT"]),
           "ACH": t(r["ACH"]),
-          "TGT ACH%": t(r["TGT ACH%"]),
           "ECO TGT": t(r["ECO TGT"]),
           "ECO ACH": t(r["ECO ACH"]),
-          "ECO ACH%": t(r["ECO ACH%"]),
           "ULS TGT": t(r["ULS TGT"]),
-          "ULS ACH": t(r["ULS ACH"]),
-          "ULS ACH%": t(r["ULS ACH%"])
+          "ULS ACH": t(r["ULS ACH"])
         }));
-        addSourceLine("BA: Durex", true, `${DUREX.length} rows`);
-      }catch(e){
-        addSourceLine("BA: Durex", false, String(e));
-      }
+      }catch{ DUREX = []; }
 
       // Mortein
       try{
-        const mt = await fetchJSON(URLS.mortein);
+        const mt = await jget(URLS.mortein);
         MORTEIN = mt.map(r => ({
           "UNIQUE DBSR Code": t(r["UNIQUE DBSR Code"]),
           "TSI": t(r["TSI"]),
           "Distributor Name": t(r["Distributor Name"]),
           "DBSR Name": t(r["DBSR Name"]),
           "OMR": t(r["OMR"]),
-          // Metrics (₹ Lakh)
           "VAL TGT": t(r["VAL TGT"]),
           "VAL ACH": t(r["VAL ACH"]),
-          "ACH%": t(r["ACH%"]),
           "ECO TGT": t(r["ECO TGT"]),
-          "ECO ACH": t(r["ECO ACH"]),
-          "ECO ACH%": t(r["ACH%"]) || t(r["ECO ACH%"]) // some sheets label both as ACH%
+          "ECO ACH": t(r["ECO ACH"])
         }));
-        addSourceLine("BA: Mortein", true, `${MORTEIN.length} rows`);
-      }catch(e){
-        addSourceLine("BA: Mortein", false, String(e));
-      }
-
-      buildFilters();
+      }catch{ MORTEIN = []; }
     }
 
-    /***** FILTERS *****/
-    function buildFilters(){
-      // TSI list
-      const tsi = groupUniq(GTM.map(r => r["TSI"]));
-      tsiSel.innerHTML = `<option value="">Select TSI</option>` + tsi.sort().map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
-      dbSel.innerHTML = `<option value="">Select Distributor</option>`;
-      dbsrSel.innerHTML = `<option value="">Select DBSR</option>`;
-      keyInfo.style.display = "none";
-    }
-
+    /***** EVENTS *****/
     tsiSel.addEventListener("change", ()=>{
-      const selTSI = t(tsiSel.value);
-      const dists = groupUniq(GTM.filter(r => t(r["TSI"])===selTSI).map(r => r["Distributor Name"])).sort();
+      const sel = t(tsiSel.value);
+      const dists = uniq(GTM.filter(r=>t(r["TSI"])===sel).map(r=>r["Distributor Name"])).sort((a,b)=>a.localeCompare(b));
       dbSel.innerHTML = `<option value="">Select Distributor</option>` + dists.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
       dbsrSel.innerHTML = `<option value="">Select DBSR</option>`;
       keyInfo.style.display = "none";
-      clearTopAndBrands();
+      clearAll();
     });
 
     dbSel.addEventListener("change", ()=>{
-      const selTSI = t(tsiSel.value), selDB = t(dbSel.value);
-      const reps = groupUniq(GTM.filter(r => t(r["TSI"])===selTSI && t(r["Distributor Name"])===selDB).map(r => r["DBSR Name"])).sort();
+      const selT = t(tsiSel.value), selD = t(dbSel.value);
+      const reps = uniq(GTM.filter(r=>t(r["TSI"])===selT && t(r["Distributor Name"])===selD).map(r=>r["DBSR Name"])).sort((a,b)=>a.localeCompare(b));
       dbsrSel.innerHTML = `<option value="">Select DBSR</option>` + reps.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
       keyInfo.style.display = "none";
-      clearTopAndBrands();
+      clearAll();
     });
 
     dbsrSel.addEventListener("change", ()=>{
-      const selTSI = t(tsiSel.value), selDB = t(dbSel.value), selName = t(dbsrSel.value);
-      if (!selTSI || !selDB || !selName) return;
-      const rows = findGtmRows(selTSI, selDB, selName);
+      const selT = t(tsiSel.value), selD = t(dbSel.value), selN = t(dbsrSel.value);
+      if (!selT || !selD || !selN) return;
+      const rows = findGtm(selT, selD, selN);
       if (!rows.length){
         keyInfo.style.display = "block";
-        keyInfo.innerHTML = `No GTM row found for selection.`;
-        clearTopAndBrands();
+        keyInfo.textContent = "No GTM row found for selection.";
+        clearAll();
         return;
       }
-      // if multiple, we aggregate but keep first code for join
       const code = rows[0]["UNIQUE DBSR Code"];
       keyInfo.style.display = "block";
-      keyInfo.innerHTML = `Code: <strong>${esc(code||"-")}</strong>${rows.length>1?` • <span class="disclaimer">Multiple GTM rows; aggregating</span>`:""}`;
+      keyInfo.innerHTML = `Code: <strong>${esc(code || "-")}</strong>${rows.length>1 ? ' • <span class="disclaimer">Multiple GTM rows; aggregated</span>' : ''}`;
 
-      // Top KPIs + ECO
-      renderTopGtm(rows);
+      // Top KPIs from GTM (sum counts, avg percentages/avg)
+      const sum = sumRows(rows, ["OMR","Geo Tagged Count",">0 Eco(Geo) Y",">=800 Eco(Geo) Z",">0 Eco(total) AA",">=800 Eco(total) AB"]);
+      const avg = avgRows(rows, ["HHT %","Avg Geo Bills","% Geo Tagged vs Geo Fencend"]);
+      kpiOMR.textContent = Number.isFinite(toNum(sum["OMR"])) ? toNum(sum["OMR"]).toLocaleString("en-IN") : "—";
+      kpiGeo.textContent = Number.isFinite(toNum(sum["Geo Tagged Count"])) ? toNum(sum["Geo Tagged Count"]).toLocaleString("en-IN") : "—";
+      kpiHHT.textContent = fmtPct(toNum(avg["HHT %"]));
+      kpiAvg.textContent = Number.isFinite(toNum(avg["Avg Geo Bills"])) ? toNum(avg["Avg Geo Bills"]).toFixed(1) : "—";
+      kpiFence.textContent = fmtPct(toNum(avg["% Geo Tagged vs Geo Fencend"]));
+      ecoY.textContent  = Number.isFinite(toNum(sum[">0 Eco(Geo) Y"])) ? toNum(sum[">0 Eco(Geo) Y"]).toLocaleString("en-IN") : "—";
+      ecoZ.textContent  = Number.isFinite(toNum(sum[">=800 Eco(Geo) Z"])) ? toNum(sum[">=800 Eco(Geo) Z"]).toLocaleString("en-IN") : "—";
+      ecoAA.textContent = Number.isFinite(toNum(sum[">0 Eco(total) AA"])) ? toNum(sum[">0 Eco(total) AA"]).toLocaleString("en-IN") : "—";
+      ecoAB.textContent = Number.isFinite(toNum(sum[">=800 Eco(total) AB"])) ? toNum(sum[">=800 Eco(total) AB"]).toLocaleString("en-IN") : "—";
 
-      // Brands
+      // Brand Activation rendering
       renderBrands(code);
     });
 
-    function clearTopAndBrands(){
-      [kpiO,kpiX,kpiP,kpiV,kpiAC].forEach(el => el.textContent="—");
-      [ecoY,ecoZ,ecoAA,ecoAB].forEach(el => el.textContent="—");
-      dxOverallText.textContent="—"; dxEcoText.textContent="—"; dxUlsText.textContent="—";
-      mtOverallText.textContent="—"; mtEcoText.textContent="—";
-      dxNote.style.display="none"; mtNote.style.display="none"; dxFlag.style.display="none"; mtFlag.style.display="none";
-      // destroy charts if any
-      Object.keys(charts).forEach(k => { if (charts[k]) { charts[k].destroy(); charts[k]=null; } });
+    function clearAll(){
+      [kpiOMR,kpiGeo,kpiHHT,kpiAvg,kpiFence,ecoY,ecoZ,ecoAA,ecoAB].forEach(el => el.textContent="—");
+      // reset meters
+      resetBrand("dx");
+      resetBrand("mt");
     }
 
-    /***** RENDER: GTM TOP *****/
-    function renderTopGtm(rows){
-      // Sums for counts; averages for %
-      const sumKeys = ["OMR","Geo Tagged Count", ">0 Eco(Geo) Y", ">=800 Eco(Geo) Z", ">0 Eco(total) AA", ">=800 Eco(total) AB"];
-      const avgKeys = ["HHT %","Avg Geo Bills","% Geo Tagged vs Geo Fencend"];
-
-      const { sum, multi: multiS } = sumMetrics(rows, sumKeys);
-      const { avg, multi: multiA } = avgMetrics(rows, avgKeys);
-
-      kpiO.textContent = Number.isFinite(num(sum["OMR"])) ? num(sum["OMR"]).toLocaleString("en-IN") : "—";
-      kpiX.textContent = Number.isFinite(num(sum["Geo Tagged Count"])) ? num(sum["Geo Tagged Count"]).toLocaleString("en-IN") : "—";
-      kpiP.textContent = Number.isFinite(num(avg["HHT %"])) ? fmtPct(num(avg["HHT %"])) : "—";
-      kpiV.textContent = Number.isFinite(num(avg["Avg Geo Bills"])) ? num(avg["Avg Geo Bills"]).toFixed(1) : "—";
-      kpiAC.textContent = Number.isFinite(num(avg["% Geo Tagged vs Geo Fencend"])) ? fmtPct(num(avg["% Geo Tagged vs Geo Fencend"])) : "—";
-
-      // ECO buckets
-      ecoY.textContent  = Number.isFinite(num(sum[">0 Eco(Geo) Y"])) ? num(sum[">0 Eco(Geo) Y"]).toLocaleString("en-IN") : "—";
-      ecoZ.textContent  = Number.isFinite(num(sum[">=800 Eco(Geo) Z"])) ? num(sum[">=800 Eco(Geo) Z"]).toLocaleString("en-IN") : "—";
-      ecoAA.textContent = Number.isFinite(num(sum[">0 Eco(total) AA"])) ? num(sum[">0 Eco(total) AA"]).toLocaleString("en-IN") : "—";
-      ecoAB.textContent = Number.isFinite(num(sum[">=800 Eco(total) AB"])) ? num(sum[">=800 Eco(total) AB"]).toLocaleString("en-IN") : "—";
+    function resetBrand(prefix){
+      const badge = (prefix==="dx")?dxBadge:mtBadge;
+      const note  = (prefix==="dx")?dxNote:mtNote;
+      const boxes = prefix==="dx"
+        ? [dxOverallBox,dxEcoBox,dxUlsBox]
+        : [mtOverallBox,mtEcoBox];
+      badge.style.display = "none";
+      note.style.display = "none";
+      boxes.forEach(b => meterSet(b, 0));
+      const pctIds = prefix==="dx"
+        ? [dxOverallPct,dxEcoPct,dxUlsPct]
+        : [mtOverallPct,mtEcoPct];
+      const numIds = prefix==="dx"
+        ? [dxOverallNums,dxEcoNums,dxUlsNums]
+        : [mtOverallNums,mtEcoNums];
+      pctIds.forEach(p=>p.textContent="—");
+      numIds.forEach(n=>n.textContent="Target — · Ach —");
     }
 
-    /***** RENDER: BRANDS *****/
     function renderBrands(code){
       // Durex
-      const dxRows = findBrandRows(DUREX, code);
-      const dxOverallKeys = ["TGT","ACH","TGT ACH%"];
-      const dxEcoKeys     = ["ECO TGT","ECO ACH","ECO ACH%"];
-      const dxUlsKeys     = ["ULS TGT","ULS ACH","ULS ACH%"];
-
-      let dxDup = dxRows.length>1;
-      let tgt=NaN, ach=NaN, pct=NaN;
-      let et=NaN, ea=NaN, ep=NaN;
-      let ut=NaN, ua=NaN, up=NaN;
-
+      const dxRows = byCode(DUREX, code);
+      resetBrand("dx");
       if (dxRows.length){
-        const { sum: s1 } = sumMetrics(dxRows, ["TGT","ACH"]);
-        tgt = num(s1["TGT"]); ach = num(s1["ACH"]);
-        const p1 = num(dxRows[0]["TGT ACH%"]); pct = Number.isFinite(p1)?p1: (Number.isFinite(tgt) && tgt!==0 && Number.isFinite(ach) ? (ach/tgt*100) : NaN);
+        const s1 = sumRows(dxRows, ["TGT","ACH"]);
+        setOverall([dxOverallBox, dxOverallPct, dxOverallNums], toNum(s1["TGT"]), toNum(s1["ACH"]));
 
-        const { sum: s2 } = sumMetrics(dxRows, ["ECO TGT","ECO ACH"]);
-        et = num(s2["ECO TGT"]); ea = num(s2["ECO ACH"]);
-        const p2 = num(dxRows[0]["ECO ACH%"]); ep = Number.isFinite(p2)?p2: (Number.isFinite(et) && et!==0 && Number.isFinite(ea) ? (ea/et*100) : NaN);
+        const s2 = sumRows(dxRows, ["ECO TGT","ECO ACH"]);
+        setOverall([dxEcoBox, dxEcoPct, dxEcoNums], toNum(s2["ECO TGT"]), toNum(s2["ECO ACH"]));
 
-        const { sum: s3 } = sumMetrics(dxRows, ["ULS TGT","ULS ACH"]);
-        ut = num(s3["ULS TGT"]); ua = num(s3["ULS ACH"]);
-        const p3 = num(dxRows[0]["ULS ACH%"]); up = Number.isFinite(p3)?p3: (Number.isFinite(ut) && ut!==0 && Number.isFinite(ua) ? (ua/ut*100) : NaN);
+        const s3 = sumRows(dxRows, ["ULS TGT","ULS ACH"]);
+        setOverall([dxUlsBox, dxUlsPct, dxUlsNums], toNum(s3["ULS TGT"]), toNum(s3["ULS ACH"]));
 
-        drawDonut(dxOverall, tgt, ach, "Target vs Ach", "dxOverall");
-        drawDonut(dxEco, et, ea, "ECO Target vs Ach", "dxEco");
-        drawDonut(dxUls, ut, ua, "ULS Target vs Ach", "dxUls");
-
-        setBrandText(dxOverallText, tgt, ach, pct);
-        setBrandText(dxEcoText, et, ea, ep);
-        setBrandText(dxUlsText, ut, ua, up);
-
-        dxNote.style.display = dxDup ? "block" : "none";
-        if (dxDup) dxNote.textContent = "Multiple Durex rows for this code; summed values and recomputed %.";
-        dxFlag.style.display = "none";
+        if (dxRows.length>1){ dxNote.style.display="block"; dxNote.textContent="Multiple Durex rows for this code; summed totals shown."; }
       } else {
-        dxNote.style.display = "none";
-        dxFlag.style.display = "inline-block";
-        dxFlag.textContent = "No data this month";
-        dxOverallText.textContent="—"; dxEcoText.textContent="—"; dxUlsText.textContent="—";
-        ["dxOverall","dxEco","dxUls"].forEach(k => { if (charts[k]) { charts[k].destroy(); charts[k]=null; } });
+        dxBadge.style.display = "inline-flex";
       }
 
       // Mortein
-      const mtRows = findBrandRows(MORTEIN, code);
-      let mtt=NaN, mta=NaN, mtp=NaN, met=NaN, mea=NaN, mep=NaN;
-      const mtDup = mtRows.length>1;
-
+      const mtRows = byCode(MORTEIN, code);
+      resetBrand("mt");
       if (mtRows.length){
-        const { sum: ms1 } = sumMetrics(mtRows, ["VAL TGT","VAL ACH"]);
-        mtt = num(ms1["VAL TGT"]); mta = num(ms1["VAL ACH"]);
-        const p = num(mtRows[0]["ACH%"]); mtp = Number.isFinite(p)?p: (Number.isFinite(mtt)&&mtt!==0 && Number.isFinite(mta) ? (mta/mtt*100) : NaN);
+        const s1 = sumRows(mtRows, ["VAL TGT","VAL ACH"]);
+        setOverall([mtOverallBox, mtOverallPct, mtOverallNums], toNum(s1["VAL TGT"]), toNum(s1["VAL ACH"]));
 
-        const { sum: ms2 } = sumMetrics(mtRows, ["ECO TGT","ECO ACH"]);
-        met = num(ms2["ECO TGT"]); mea = num(ms2["ECO ACH"]);
-        const ep = num(mtRows[0]["ECO ACH%"]); mep = Number.isFinite(ep)?ep: (Number.isFinite(met)&&met!==0 && Number.isFinite(mea) ? (mea/met*100) : NaN);
+        const s2 = sumRows(mtRows, ["ECO TGT","ECO ACH"]);
+        setOverall([mtEcoBox, mtEcoPct, mtEcoNums], toNum(s2["ECO TGT"]), toNum(s2["ECO ACH"]));
 
-        drawDonut(mtOverall, mtt, mta, "Value Target vs Ach", "mtOverall");
-        drawDonut(mtEco, met, mea, "ECO Target vs Ach", "mtEco");
-
-        setBrandText(mtOverallText, mtt, mta, mtp);
-        setBrandText(mtEcoText, met, mea, mep);
-
-        mtNote.style.display = mtDup ? "block" : "none";
-        if (mtDup) mtNote.textContent = "Multiple Mortein rows for this code; summed values and recomputed %.";
-        mtFlag.style.display = "none";
+        if (mtRows.length>1){ mtNote.style.display="block"; mtNote.textContent="Multiple Mortein rows for this code; summed totals shown."; }
       } else {
-        mtNote.style.display = "none";
-        mtFlag.style.display = "inline-block";
-        mtFlag.textContent = "No data this month";
-        mtOverallText.textContent="—"; mtEcoText.textContent="—";
-        ["mtOverall","mtEco"].forEach(k => { if (charts[k]) { charts[k].destroy(); charts[k]=null; } });
+        mtBadge.style.display = "inline-flex";
       }
     }
 
     // Boot
-    loadAll();
+    boot();
   </script>
 </body>
 </html>
