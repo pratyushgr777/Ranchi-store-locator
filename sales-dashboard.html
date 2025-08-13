@@ -338,6 +338,16 @@
     }
     const fmtLakh = n => Number.isFinite(n) ? ("₹ " + n.toLocaleString("en-IN",{maximumFractionDigits:2}) + " L") : "—";
     const fmtPct = n => Number.isFinite(n) ? (n.toFixed(1) + "%") : "—";
+    const fmtInt = n => Number.isFinite(n) ? n.toLocaleString("en-IN") : "—";
+
+function setOverallCount(boxEls, tgt, ach){
+  const [box, pctEl, numsEl] = boxEls;
+  const pct = (Number.isFinite(tgt) && tgt>0 && Number.isFinite(ach)) ? (ach/tgt*100) : NaN;
+  pctEl.textContent = fmtPct(pct);
+  numsEl.innerHTML = `Target <strong>${fmtInt(tgt)}</strong> · Ach <strong>${fmtInt(ach)}</strong>`;
+  meterSet(box, Number.isFinite(pct) ? pct : 0);
+}
+
     const uniq = arr => Array.from(new Set(arr.filter(x => t(x)!=="")));
 
     function setPillText(month, year, updated){
@@ -546,10 +556,10 @@
         setOverall([dxOverallBox, dxOverallPct, dxOverallNums], toNum(s1["TGT"]), toNum(s1["ACH"]));
 
         const s2 = sumRows(dxRows, ["ECO TGT","ECO ACH"]);
-        setOverall([dxEcoBox, dxEcoPct, dxEcoNums], toNum(s2["ECO TGT"]), toNum(s2["ECO ACH"]));
+        setOverallCount([dxEcoBox, dxEcoPct, dxEcoNums], toNum(s2["ECO TGT"]), toNum(s2["ECO ACH"]));
 
         const s3 = sumRows(dxRows, ["ULS TGT","ULS ACH"]);
-        setOverall([dxUlsBox, dxUlsPct, dxUlsNums], toNum(s3["ULS TGT"]), toNum(s3["ULS ACH"]));
+        setOverallCount([dxUlsBox, dxUlsPct, dxUlsNums], toNum(s3["ULS TGT"]), toNum(s3["ULS ACH"]));
 
         if (dxRows.length>1){ dxNote.style.display="block"; dxNote.textContent="Multiple Durex rows for this code; summed totals shown."; }
       } else {
@@ -564,7 +574,7 @@
         setOverall([mtOverallBox, mtOverallPct, mtOverallNums], toNum(s1["VAL TGT"]), toNum(s1["VAL ACH"]));
 
         const s2 = sumRows(mtRows, ["ECO TGT","ECO ACH"]);
-        setOverall([mtEcoBox, mtEcoPct, mtEcoNums], toNum(s2["ECO TGT"]), toNum(s2["ECO ACH"]));
+        setOverallCount([mtEcoBox, mtEcoPct, mtEcoNums], toNum(s2["ECO TGT"]), toNum(s2["ECO ACH"]));
 
         if (mtRows.length>1){ mtNote.style.display="block"; mtNote.textContent="Multiple Mortein rows for this code; summed totals shown."; }
       } else {
