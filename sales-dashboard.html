@@ -61,6 +61,17 @@
       color:#cbd5e1;
     }
 
+    /* Buttons */
+    .btn{
+      appearance:none;
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(15,23,42,.95), rgba(2,6,23,.95));
+      color:#e2e8f0;
+      padding:10px 14px; border-radius:12px; font-size:14px; cursor:pointer;
+      box-shadow: var(--glow);
+    }
+    .btn:active{ transform: scale(.98); }
+
     /* Layout */
     .wrap{ max-width:1200px; margin:16px auto; padding:0 16px 30px; display:grid; gap:16px }
 
@@ -92,7 +103,6 @@
     }
     select:focus{ border-color:#0891b2; box-shadow: 0 0 0 3px rgba(34,211,238,.15) }
     select option{ background:#0b1220; color:#e2e8f0 }
-
     .hint{ color:var(--muted); font-size:12px; margin-top:6px }
 
     /* KPI tiles */
@@ -154,6 +164,8 @@
     .nums{ font-size:12px; color:#a3b1c6 }
 
     .disclaimer{ color:#94a3b8; font-size:12px; margin-top:6px }
+
+    .actions{margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;}
   </style>
 </head>
 <body>
@@ -188,12 +200,17 @@
           </div>
         </div>
         <div class="hint" id="keyInfo" style="display:none; margin-top:10px;"></div>
+
+        <!-- Share -->
+        <div class="actions">
+          <button class="btn" id="waBtn">Share via WhatsApp</button>
+        </div>
       </div>
     </section>
 
     <!-- GTM KPIs -->
     <section class="panel">
-      <div class="panel-h">DBSR Snapshot</div>
+      <div class="panel-h">GTM Snapshot</div>
       <div class="panel-b">
         <div class="kpis kpis-5">
           <div class="kpi"><div class="label">OMR (Total Outlets)</div><div class="value" id="kpiOMR">—</div></div>
@@ -205,16 +222,16 @@
 
         <div class="eco" style="margin-top:12px;">
           <div class="eco-card">
-            <div class="eco-title">Non-Geo ECO</div>
+            <div class="eco-title">Geo-adhered ECO</div>
             <div class="eco-row"><div class="name">&gt; 0 bills</div><div class="count" id="ecoY">—</div></div>
             <div class="eco-row"><div class="name">&ge; 800 bills</div><div class="count" id="ecoZ">—</div></div>
-            <div class="hint">Counts not adhered to geo-tagging</div>
+            <div class="hint">Counts adhered to geo-tagging (from Y / Z)</div>
           </div>
           <div class="eco-card">
-            <div class="eco-title">Geo-adhered ECO</div>
+            <div class="eco-title">Total ECO</div>
             <div class="eco-row"><div class="name">&gt; 0 bills</div><div class="count" id="ecoAA">—</div></div>
             <div class="eco-row"><div class="name">&ge; 800 bills</div><div class="count" id="ecoAB">—</div></div>
-            <div class="hint">Counts adhered to geo-tagging</div>
+            <div class="hint">Overall counts (from AA / AB)</div>
           </div>
         </div>
       </div>
@@ -309,6 +326,7 @@
     const periodPill = $("periodPill"), updatedPill = $("updatedPill");
 
     const tsiSel = $("tsiSel"), dbSel = $("dbSel"), dbsrSel = $("dbsrSel"), keyInfo = $("keyInfo");
+    const waBtn = $("waBtn");
 
     const kpiOMR = $("kpiOMR"), kpiGeo = $("kpiGeo"), kpiHHT = $("kpiHHT"), kpiAvg = $("kpiAvg"), kpiFence = $("kpiFence");
     const ecoY = $("ecoY"), ecoZ = $("ecoZ"), ecoAA = $("ecoAA"), ecoAB = $("ecoAB");
@@ -326,9 +344,10 @@
 
     /***** STATE *****/
     let GTM = [], DUREX = [], MORTEIN = [];
+    let SELECTED = { code:"", tsi:"", dist:"", name:"" };
 
     /***** HELPERS *****/
-    const esc = s => String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&gt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    const esc = s => String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     const t = v => (v==null ? "" : String(v).trim());
     function toNum(v){
       if (v==null) return NaN;
@@ -339,16 +358,9 @@
     const fmtLakh = n => Number.isFinite(n) ? ("₹ " + n.toLocaleString("en-IN",{maximumFractionDigits:2}) + " L") : "—";
     const fmtPct = n => Number.isFinite(n) ? (n.toFixed(1) + "%") : "—";
     const fmtInt = n => Number.isFinite(n) ? n.toLocaleString("en-IN") : "—";
-
-function setOverallCount(boxEls, tgt, ach){
-  const [box, pctEl, numsEl] = boxEls;
-  const pct = (Number.isFinite(tgt) && tgt>0 && Number.isFinite(ach)) ? (ach/tgt*100) : NaN;
-  pctEl.textContent = fmtPct(pct);
-  numsEl.innerHTML = `Target <strong>${fmtInt(tgt)}</strong> · Ach <strong>${fmtInt(ach)}</strong>`;
-  meterSet(box, Number.isFinite(pct) ? pct : 0);
-}
-
     const uniq = arr => Array.from(new Set(arr.filter(x => t(x)!=="")));
+
+    const getTxt = el => (el && el.textContent ? el.textContent.trim() : "—");
 
     function setPillText(month, year, updated){
       const label = (month && year) ? `${month} ${year}` :
@@ -371,6 +383,14 @@ function setOverallCount(boxEls, tgt, ach){
       const pct = (Number.isFinite(tgt) && tgt>0 && Number.isFinite(ach)) ? (ach/tgt*100) : NaN;
       pctEl.textContent = fmtPct(pct);
       numsEl.innerHTML = `Target <strong>${fmtLakh(tgt)}</strong> · Ach <strong>${fmtLakh(ach)}</strong>`;
+      meterSet(box, Number.isFinite(pct) ? pct : 0);
+    }
+
+    function setOverallCount(boxEls, tgt, ach){
+      const [box, pctEl, numsEl] = boxEls;
+      const pct = (Number.isFinite(tgt) && tgt>0 && Number.isFinite(ach)) ? (ach/tgt*100) : NaN;
+      pctEl.textContent = fmtPct(pct);
+      numsEl.innerHTML = `Target <strong>${fmtInt(tgt)}</strong> · Ach <strong>${fmtInt(ach)}</strong>`;
       meterSet(box, Number.isFinite(pct) ? pct : 0);
     }
 
@@ -501,6 +521,8 @@ function setOverallCount(boxEls, tgt, ach){
         return;
       }
       const code = rows[0]["UNIQUE DBSR Code"];
+      SELECTED = { code, tsi: selT, dist: selD, name: selN };
+
       keyInfo.style.display = "block";
       keyInfo.innerHTML = `Code: <strong>${esc(code || "-")}</strong>${rows.length>1 ? ' • <span class="disclaimer">Multiple GTM rows; aggregated</span>' : ''}`;
 
@@ -512,8 +534,12 @@ function setOverallCount(boxEls, tgt, ach){
       kpiHHT.textContent = fmtPct(toNum(avg["HHT %"]));
       kpiAvg.textContent = Number.isFinite(toNum(avg["Avg Geo Bills"])) ? toNum(avg["Avg Geo Bills"]).toFixed(1) : "—";
       kpiFence.textContent = fmtPct(toNum(avg["% Geo Tagged vs Geo Fencend"]));
+
+      // ECO buckets (corrected mapping)
+      // Geo-adhered ECO -> Y / Z
       ecoY.textContent  = Number.isFinite(toNum(sum[">0 Eco(Geo) Y"])) ? toNum(sum[">0 Eco(Geo) Y"]).toLocaleString("en-IN") : "—";
       ecoZ.textContent  = Number.isFinite(toNum(sum[">=800 Eco(Geo) Z"])) ? toNum(sum[">=800 Eco(Geo) Z"]).toLocaleString("en-IN") : "—";
+      // Total ECO -> AA / AB
       ecoAA.textContent = Number.isFinite(toNum(sum[">0 Eco(total) AA"])) ? toNum(sum[">0 Eco(total) AA"]).toLocaleString("en-IN") : "—";
       ecoAB.textContent = Number.isFinite(toNum(sum[">=800 Eco(total) AB"])) ? toNum(sum[">=800 Eco(total) AB"]).toLocaleString("en-IN") : "—";
 
@@ -581,6 +607,70 @@ function setOverallCount(boxEls, tgt, ach){
         mtBadge.style.display = "inline-flex";
       }
     }
+
+    /* WhatsApp share */
+    function buildWhatsAppMessage(){
+      if (!SELECTED.code || !SELECTED.name){
+        return "Please select TSI, Distributor, and DBSR first.";
+      }
+
+      // Top KPIs
+      const k_omr   = getTxt(kpiOMR);
+      const k_geo   = getTxt(kpiGeo);
+      const k_hht   = getTxt(kpiHHT);
+      const k_avg   = getTxt(kpiAvg);
+      const k_fence = getTxt(kpiFence);
+
+      // ECO buckets (corrected labels)
+      const y  = getTxt(ecoY);
+      const z  = getTxt(ecoZ);
+      const aa = getTxt(ecoAA);
+      const ab = getTxt(ecoAB);
+
+      // Brand lines (we reuse what's already rendered)
+      // Durex
+      const dxOverall = `${getTxt(dxOverallNums)} (${getTxt(dxOverallPct)})`;
+      const dxEco     = `${getTxt(dxEcoNums)} (${getTxt(dxEcoPct)})`;
+      const dxUls     = `${getTxt(dxUlsNums)} (${getTxt(dxUlsPct)})`;
+
+      // Mortein
+      const mtOverall = `${getTxt(mtOverallNums)} (${getTxt(mtOverallPct)})`;
+      const mtEco     = `${getTxt(mtEcoNums)} (${getTxt(mtEcoPct)})`;
+
+      const header = [
+        `DBSR: ${SELECTED.name} (${SELECTED.dist})`,
+        `TSI: ${SELECTED.tsi} | Code: ${SELECTED.code}`
+      ].join("\n");
+
+      const kpis = [
+        `OMR ${k_omr} | Geo-tagged ${k_geo} | HHT ${k_hht}`,
+        `Avg Geo Bills ${k_avg} | GeoTag vs Fenced ${k_fence}`
+      ].join("\n");
+
+      const eco = [
+        `ECO (Geo-adhered): >0 ${y} | ≥800 ${z}`,
+        `ECO (Total):       >0 ${aa} | ≥800 ${ab}`
+      ].join("\n");
+
+      const brands = [
+        `Durex Overall: ${dxOverall}`,
+        `Durex ECO:     ${dxEco}`,
+        `Durex ULS:     ${dxUls}`,
+        ``,
+        `Mortein Overall: ${mtOverall}`,
+        `Mortein ECO:     ${mtEco}`
+      ].join("\n");
+
+      return [header, "", kpis, "", eco, "", brands].join("\n");
+    }
+
+    function shareWhatsApp(){
+      const msg = buildWhatsAppMessage();
+      const url = "https://wa.me/?text=" + encodeURIComponent(msg);
+      window.open(url, "_blank");
+    }
+
+    waBtn.addEventListener("click", shareWhatsApp);
 
     // Boot
     boot();
