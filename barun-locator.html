@@ -1,323 +1,402 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Barun Store Locator</title>
+  <meta charset="UTF-8" />
+  <title>Barun – Store Locator (Red Theme)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    :root{
+      --bg: #faf7f7;
+      --text: #1f1f1f;
+      --muted: #626262;
+      --card: #ffffff;
+      --stroke: #e9d9d9;
+      --accent: #c62828;   /* main red */
+      --accent-2: #e53935; /* lighter red */
+      --accent-3: #ffebee; /* very light red for backgrounds */
+      --radius: 14px;
+      --shadow: 0 8px 26px rgba(0,0,0,0.08);
+    }
+    *{ box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      max-width: 800px;
-      margin: auto;
-      background-color: #f5f9ff;
+      margin: 0;
+      background:
+        radial-gradient(800px 500px at 10% -10%, #ffebee, transparent 60%),
+        radial-gradient(700px 500px at 110% 0%, #fff3f3, transparent 60%),
+        var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+      line-height: 1.45;
     }
 
-    h2 {
-      text-align: center;
-      color: #004080;
+    /* Header */
+    .appbar {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(255,255,255,0.9);
+      backdrop-filter: saturate(140%) blur(6px);
+      border-bottom: 1px solid var(--stroke);
+    }
+    .appbar-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      max-width: 1100px; margin: 0 auto; padding: 12px 16px;
+    }
+    .title {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 700; letter-spacing: .2px;
+      color: var(--accent);
+    }
+    .title .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, var(--accent-2), var(--accent));
+      box-shadow: 0 0 10px rgba(230, 57, 53, 0.55);
+    }
+    .btn {
+      appearance: none; border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, #fff, #fff7f7);
+      color: var(--text);
+      padding: 10px 14px; border-radius: 10px;
+      font-size: 15px; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 8px;
+      box-shadow: var(--shadow);
+      transition: transform .06s ease, border-color .15s ease, background .15s ease;
+      touch-action: manipulation;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary {
+      border-color: #f2b5b5;
+      background: linear-gradient(180deg, #ffe5e5, #ffdede);
+      color: #8b1212;
     }
 
-    label {
-      font-weight: bold;
-      margin-top: 20px;
-      display: block;
+    /* Layout */
+    .wrap {
+      max-width: 1100px; margin: 16px auto; padding: 0 16px 24px;
+      display: grid; gap: 16px;
     }
 
+    /* Filters panel */
+    .panel {
+      border: 1px solid var(--stroke); border-radius: var(--radius);
+      background: var(--card);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-bottom: 1px solid var(--stroke);
+      background: linear-gradient(180deg, #fff, #fff6f6);
+    }
+    .panel-header h3 { margin: 0; font-size: 16px; font-weight: 700; color: var(--accent); }
+    .panel-content {
+      display: grid; gap: 10px; padding: 12px; grid-template-columns: 1fr;
+    }
+    @media (min-width: 860px) { .panel-content { grid-template-columns: repeat(4, 1fr); } }
+
+    .field label {
+      display: block; font-size: 13px; color: var(--muted);
+      margin: 6px 2px 6px;
+    }
+
+    /* Dropdowns (clear contrast) */
     select {
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      margin-top: 8px;
-      margin-bottom: 20px;
-      background-color: #f0f4f8; /* Light background */
-      color: #000000; /* Black text */
-      border: 1px solid #ccc;
-      border-radius: 6px;
+      width: 100%; padding: 12px 12px; font-size: 16px;
+      color: #111; background: #f4f6fb; /* light bluish/grey for contrast */
+      border: 1px solid #d9dfe8; border-radius: 10px; outline: none;
     }
-
+    select:focus { border-color: #f5a0a0; box-shadow: 0 0 0 3px #ffe3e3; }
     select option {
-      background-color: #ffffff; /* White option background */
-      color: #000000; /* Black text */
+      background: #ffffff; color: #000;
     }
 
-    #storeInfo {
-      background: #ffffff;
-      padding: 20px;
-      border: 1px solid #d0d0d0;
-      border-radius: 5px;
-      font-size: 16px;
-      line-height: 1.6;
+    /* Map + info */
+    .map-card {
+      border: 1px solid var(--stroke); border-radius: var(--radius);
+      background: var(--card); box-shadow: var(--shadow);
+      overflow: hidden;
     }
+    #map { width: 100%; height: 58vh; min-height: 360px; }
+    .info {
+      padding: 12px 14px; border-top: 1px solid var(--stroke);
+      background: linear-gradient(180deg, #fff, #fff7f7);
+    }
+    .info p { margin: 0; color: var(--muted); }
+    .info strong { color: var(--text); }
 
-    #map {
-      width: 100%;
-      height: 400px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-    }
-
-    a {
-      color: #0066cc;
-      text-decoration: none;
-    }
-
-    a:hover {
-      text-decoration: underline;
-    }
-
-    .button {
-      padding: 10px 15px;
-      background: #007BFF;
-      color: white;
-      text-decoration: none;
-      border-radius: 4px;
-    }
-
-    .button:hover {
-      background: #0056b3;
-    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
 
-  <h2>📍 Barun Store Locator</h2>
+  <!-- Sticky header -->
+  <header class="appbar">
+    <div class="appbar-inner">
+      <div class="title">
+        <span class="dot"></span>
+        <span>Barun — Store Locator</span>
+      </div>
+      <div>
+        <button id="useMyLocation" class="btn btn-primary">Use my location</button>
+      </div>
+    </div>
+  </header>
 
-  <label for="dbNameDropdown">Select DB Name:</label>
-  <select id="dbNameDropdown">
-    <option value="">-- Choose DB Name --</option>
-  </select>
+  <main class="wrap">
+    <!-- Filters -->
+    <section class="panel">
+      <div class="panel-header">
+        <h3>Filters</h3>
+      </div>
+      <div class="panel-content">
+        <div class="field">
+          <label for="dbSelect">DB Name</label>
+          <select id="dbSelect"><option value="ALL">All</option></select>
+        </div>
+        <div class="field">
+          <label for="dbsrSelect">DBSR Name</label>
+          <select id="dbsrSelect"><option value="ALL">All</option></select>
+        </div>
+        <div class="field">
+          <label for="beatSelect">Beat</label>
+          <select id="beatSelect"><option value="ALL">All</option></select>
+        </div>
+        <div class="field">
+          <label for="customerSelect">Customer</label>
+          <select id="customerSelect"><option value="ALL">All</option></select>
+        </div>
+      </div>
+    </section>
 
-  <label for="dbsrNameDropdown">Select DBSR Name:</label>
-  <select id="dbsrNameDropdown">
-    <option value="">-- Choose DBSR Name --</option>
-  </select>
-
-  <label for="beatDropdown">Select Beat:</label>
-  <select id="beatDropdown">
-    <option value="">-- Choose Beat --</option>
-  </select>
-
-  <label for="customerDropdown">Select Customer:</label>
-  <select id="customerDropdown">
-    <option value="">-- Choose Customer --</option>
-  </select>
-
-  <div id="map"></div>
-
-  <div id="storeInfo"></div>
+    <!-- Map + info -->
+    <section class="map-card">
+      <div id="map"></div>
+      <div class="info">
+        <p id="infoPanel">Pick filters to view outlets. Tap a marker for details.</p>
+      </div>
+    </section>
+  </main>
 
   <script>
+    // Source: "Barun" tab of your sheet
     const sheetURL = "https://opensheet.vercel.app/1Cx09yjWN8lju1jZENNuMB4nLdEV1NDTay_miEc6r0Ys/Barun";
-    let storeData = [];
-    let map;
-    let markers = [];
-    let userMarker = null;
 
+    // Helpers
+    const t = v => (v == null ? "" : String(v).trim());
+    const n = v => { const x = parseFloat(v); return Number.isFinite(x) ? x : NaN; };
+    const escapeHtml = s => String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    const uniqSorted = arr => [...new Set(arr.filter(v => t(v) !== ""))].sort((a,b)=>String(a).localeCompare(String(b),undefined,{sensitivity:'base'}));
+
+    // Resolve flexible headers
+    function getVal(row, candidates) {
+      for (const key of candidates) {
+        if (key in row && t(row[key]) !== "") return row[key];
+        const norm = s => String(s).toLowerCase().replace(/\s+/g," ").trim();
+        const wanted = norm(key);
+        for (const k in row) if (norm(k) === wanted && t(row[k]) !== "") return row[k];
+      }
+      return "";
+    }
+
+    // Column candidates (supports “Beat Name” and “Beat”)
+    const CANDS = {
+      DB:       ["DB NAME","DB Name","DB"],
+      DBSR:     ["DBSR name","DBSR Name","DBSR"],
+      BEAT:     ["Beat Name","Beat"],
+      CUSTOMER: ["Customer Name","Customer"],
+      LAT:      ["Latitude","Lat"],
+      LON:      ["Longitude","Long","Lng"]
+    };
+
+    // State
+    let data = []; // normalized rows: {db, dbsr, beat, customer, lat, lon}
+    let map, infoWindow;
+    let markers = [];
+    let userMarker = null, userLatLng = null;
+
+    // DOM getters
+    const $db   = () => document.getElementById("dbSelect");
+    const $dbsr = () => document.getElementById("dbsrSelect");
+    const $beat = () => document.getElementById("beatSelect");
+    const $cust = () => document.getElementById("customerSelect");
+    const $info = () => document.getElementById("infoPanel");
+
+    // Build select with raw values; keep previous value if still valid
+    function populateSelect(el, values, keepValue = true) {
+      const prev = keepValue ? el.value : null;
+      while (el.firstChild) el.removeChild(el.firstChild);
+
+      const optAll = document.createElement('option');
+      optAll.value = 'ALL'; optAll.textContent = 'All';
+      el.appendChild(optAll);
+
+      values.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v;           // raw value
+        opt.textContent = v;     // visible label
+        el.appendChild(opt);
+      });
+
+      if (keepValue && prev && (prev === 'ALL' || values.includes(prev))) el.value = prev;
+    }
+
+    /* MAP */
     function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 23.3441, lng: 85.3096 },
-        zoom: 12,
+        center: { lat: 23.3441, lng: 85.3096 }, // Ranchi
+        zoom: 11,
+        mapTypeControl: false,
+        streetViewControl: false,
       });
+      infoWindow = new google.maps.InfoWindow();
 
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          pos => {
-            const userLatLng = {
-              lat: pos.coords.latitude,
-              lng: pos.coords.longitude
-            };
-
-            userMarker = new google.maps.Marker({
-              position: userLatLng,
-              map,
-              title: "Your Location",
-              icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                scale: 8,
-                fillColor: "#007BFF",
-                fillOpacity: 1,
-                strokeWeight: 2,
-                strokeColor: "#ffffff"
-              }
-            });
-          },
-          err => {
-            console.log("Location access denied.");
-          }
-        );
+        navigator.geolocation.getCurrentPosition(pos => {
+          userLatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          userMarker = new google.maps.Marker({
+            position: userLatLng, map, title: "Your Location",
+            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#e53935", fillOpacity: 1, strokeWeight: 2, strokeColor: "#ffffff" }
+          });
+        }, () => {});
       }
     }
-
-    function clearMarkers() {
-      markers.forEach(marker => marker.setMap(null));
-      markers = [];
+    function clearMarkers(){ markers.forEach(m => m.setMap(null)); markers = []; }
+    function fitToMarkers(includeUser = true) {
+      const bounds = new google.maps.LatLngBounds();
+      let any = false;
+      markers.forEach(m => { bounds.extend(m.getPosition()); any = true; });
+      if (includeUser && userLatLng) { bounds.extend(userLatLng); any = true; }
+      if (any) {
+        map.fitBounds(bounds);
+        google.maps.event.addListenerOnce(map, "bounds_changed", () => {
+          if (map.getZoom() > 15) map.setZoom(15);
+        });
+      }
     }
+    function makeMarker(entry) {
+      if (!Number.isFinite(entry.lat) || !Number.isFinite(entry.lon)) return null;
+      const gmaps = `https://www.google.com/maps?q=${entry.lat},${entry.lon}`;
+      const marker = new google.maps.Marker({
+        map,
+        position: { lat: entry.lat, lng: entry.lon },
+        title: entry.customer || "(No name)",
+      });
+      marker.addListener("click", () => {
+        infoWindow.setContent(`
+          <div style="min-width:220px">
+            <strong>${escapeHtml(entry.customer || "")}</strong><br/>
+            DB: ${escapeHtml(entry.db || "-")}<br/>
+            DBSR: ${escapeHtml(entry.dbsr || "-")}<br/>
+            Beat: ${escapeHtml(entry.beat || "-")}<br/>
+            <a href="${gmaps}" target="_blank">Open in Google Maps</a>
+          </div>
+        `);
+        infoWindow.open(map, marker);
 
-    function addMarkers(data) {
-      clearMarkers();
-      data.forEach(store => {
-        if (store["Latitude"] && store["Longitude"]) {
-          const marker = new google.maps.Marker({
-            map,
-            position: { lat: parseFloat(store["Latitude"]), lng: parseFloat(store["Longitude"]) },
-            title: store["Customer Name"]
-          });
-
-          const infoContent = `
-            <strong>Customer:</strong> ${store["Customer Name"]}<br>
-            <strong>Beat:</strong> ${store["Beat Name"]}<br>
-            <strong>DBSR:</strong> ${store["DBSR name"]}<br>
-            <strong>DB Name:</strong> ${store["DB NAME"]}<br>
-            <a href="https://www.google.com/maps?q=${store["Latitude"]},${store["Longitude"]}" target="_blank">Open in Google Maps</a>
-          `;
-
-          marker.addListener("click", () => {
-            new google.maps.InfoWindow({
-              content: infoContent
-            }).open(map, marker);
-          });
-
-          markers.push(marker);
+        const custSel = $cust();
+        if (custSel) {
+          const match = [...custSel.options].find(o => o.value === (entry.customer || ""));
+          if (match) custSel.value = entry.customer || "";
         }
+        renderInfoPanel([entry]);
       });
-
-      if (data.length > 0) {
-        map.setCenter({ lat: parseFloat(data[0]["Latitude"]), lng: parseFloat(data[0]["Longitude"]) });
-        map.setZoom(13);
-      }
+      return marker;
     }
-
-    async function fetchData() {
-      const res = await fetch(sheetURL);
-      storeData = await res.json();
-
-      const dbNameDropdown = document.getElementById("dbNameDropdown");
-      const dbNames = [...new Set(storeData.map(item => item["DB NAME"]).filter(Boolean))];
-      dbNames.sort();
-
-      dbNameDropdown.innerHTML = '<option value="">-- Choose DB Name --</option>';
-      dbNameDropdown.innerHTML += '<option value="ALL">All DB Names</option>';
-      dbNames.forEach(db => {
-        const option = document.createElement("option");
-        option.value = db;
-        option.textContent = db;
-        dbNameDropdown.appendChild(option);
-      });
+    function renderMarkers(list) {
+      clearMarkers();
+      list.forEach(e => { const m = makeMarker(e); if (m) markers.push(m); });
+      fitToMarkers(true);
     }
-
-    document.getElementById("dbNameDropdown").addEventListener("change", function () {
-      const selectedDB = this.value;
-      const dbsrNameDropdown = document.getElementById("dbsrNameDropdown");
-      dbsrNameDropdown.innerHTML = '<option value="">-- Choose DBSR Name --</option>';
-
-      let filtered;
-      if (selectedDB === "ALL") {
-        filtered = storeData;
+    function renderInfoPanel(list) {
+      if (!list || list.length === 0) { $info().innerHTML = "No outlets match the current filters."; return; }
+      if (list.length === 1) {
+        const e = list[0];
+        const link = (Number.isFinite(e.lat) && Number.isFinite(e.lon)) ? `https://www.google.com/maps?q=${e.lat},${e.lon}` : "#";
+        $info().innerHTML = `
+          <strong>${escapeHtml(e.customer || "")}</strong><br/>
+          DB: ${escapeHtml(e.db || "-")}<br/>
+          DBSR: ${escapeHtml(e.dbsr || "-")}<br/>
+          Beat: ${escapeHtml(e.beat || "-")}<br/>
+          ${Number.isFinite(e.lat) ? `Lat: ${e.lat}` : ""} ${Number.isFinite(e.lon) ? ` | Lon: ${e.lon}` : ""}<br/>
+          <a href="${link}" target="_blank">Open in Google Maps</a>
+        `;
       } else {
-        filtered = storeData.filter(item => item["DB NAME"] === selectedDB);
+        $info().innerHTML = `Showing <strong>${list.length}</strong> outlets. Tap a marker for details.`;
       }
+    }
 
-      const dbsrNames = [...new Set(filtered.map(item => item["DBSR name"]))];
-      dbsrNames.sort();
+    /* DATA + FILTERS */
+    function filteredList() {
+      const dbVal   = $db().value;
+      const dbsrVal = $dbsr().value;
+      const beatVal = $beat().value;
+      const custVal = $cust().value;
 
-      dbsrNames.forEach(name => {
-        const option = document.createElement("option");
-        option.value = name;
-        option.textContent = name;
-        dbsrNameDropdown.appendChild(option);
-      });
+      let list = data.slice();
+      if (dbVal   !== "ALL") list = list.filter(e => t(e.db)   === t(dbVal));
+      if (dbsrVal !== "ALL") list = list.filter(e => t(e.dbsr) === t(dbsrVal));
+      if (beatVal !== "ALL") list = list.filter(e => t(e.beat) === t(beatVal));
+      if (custVal !== "ALL") list = list.filter(e => t(e.customer) === t(custVal));
+      return list;
+    }
+    function rebuildDBSR() {
+      const dbVal = $db().value;
+      let list = data.slice();
+      if (dbVal !== "ALL") list = list.filter(e => t(e.db) === t(dbVal));
+      populateSelect($dbsr(), uniqSorted(list.map(e => e.dbsr)), true);
+    }
+    function rebuildBeat() {
+      const dbVal = $db().value, dbsrVal = $dbsr().value;
+      let list = data.slice();
+      if (dbVal   !== "ALL") list = list.filter(e => t(e.db)   === t(dbVal));
+      if (dbsrVal !== "ALL") list = list.filter(e => t(e.dbsr) === t(dbsrVal));
+      populateSelect($beat(), uniqSorted(list.map(e => e.beat)), true);
+    }
+    function rebuildCustomer() {
+      const list = filteredList(); // uses current DB/DBSR/Beat
+      populateSelect($cust(), uniqSorted(list.map(e => e.customer)), false);
+    }
+    function applyFiltersAndRender() {
+      const list = filteredList();
+      renderMarkers(list);
+      renderInfoPanel(list);
+    }
 
-      document.getElementById("beatDropdown").innerHTML = '<option value="">-- Choose Beat --</option>';
-      document.getElementById("customerDropdown").innerHTML = '<option value="">-- Choose Customer --</option>';
-      addMarkers(filtered);
+    async function initData() {
+      const res = await fetch(sheetURL);
+      const raw = await res.json();
+
+      data = raw.map(r => ({
+        db:       t(getVal(r, CANDS.DB)),
+        dbsr:     t(getVal(r, CANDS.DBSR)),
+        beat:     t(getVal(r, CANDS.BEAT)),     // “Beat Name” or “Beat”
+        customer: t(getVal(r, CANDS.CUSTOMER)),
+        lat:      n(getVal(r, CANDS.LAT)),
+        lon:      n(getVal(r, CANDS.LON)),
+      }));
+
+      populateSelect($db(), uniqSorted(data.map(e => e.db)), true);
+      rebuildDBSR(); rebuildBeat(); rebuildCustomer();
+      applyFiltersAndRender();
+    }
+
+    // Events
+    $db().addEventListener("change", () => { rebuildDBSR(); rebuildBeat(); rebuildCustomer(); applyFiltersAndRender(); });
+    $dbsr().addEventListener("change", () => { rebuildBeat(); rebuildCustomer(); applyFiltersAndRender(); });
+    $beat().addEventListener("change", () => { rebuildCustomer(); applyFiltersAndRender(); });
+    $cust().addEventListener("change", () => applyFiltersAndRender());
+
+    // Header button
+    document.getElementById("useMyLocation").addEventListener("click", () => {
+      if (userLatLng) { map.setCenter(userLatLng); map.setZoom(14); }
+      else alert("Couldn't access your location yet. Please allow location permissions.");
     });
 
-    document.getElementById("dbsrNameDropdown").addEventListener("change", function () {
-      const selectedDB = document.getElementById("dbNameDropdown").value;
-      const selectedDBSR = this.value;
-      const beatDropdown = document.getElementById("beatDropdown");
-      beatDropdown.innerHTML = '<option value="">-- Choose Beat --</option>';
-
-      let filtered = storeData;
-      if (selectedDB !== "ALL" && selectedDB) {
-        filtered = filtered.filter(item => item["DB NAME"] === selectedDB);
-      }
-      if (selectedDBSR) {
-        filtered = filtered.filter(item => item["DBSR name"] === selectedDBSR);
-      }
-
-      const beats = [...new Set(filtered.map(item => item["Beat Name"]))];
-      beats.sort();
-
-      beats.forEach(beat => {
-        const option = document.createElement("option");
-        option.value = beat;
-        option.textContent = beat;
-        beatDropdown.appendChild(option);
-      });
-
-      document.getElementById("customerDropdown").innerHTML = '<option value="">-- Choose Customer --</option>';
-      addMarkers(filtered);
-    });
-
-    document.getElementById("beatDropdown").addEventListener("change", function () {
-      const selectedDB = document.getElementById("dbNameDropdown").value;
-      const selectedDBSR = document.getElementById("dbsrNameDropdown").value;
-      const selectedBeat = this.value;
-      const customerDropdown = document.getElementById("customerDropdown");
-      customerDropdown.innerHTML = '<option value="">-- Choose Customer --</option>';
-
-      let filtered = storeData;
-      if (selectedDB !== "ALL" && selectedDB) {
-        filtered = filtered.filter(item => item["DB NAME"] === selectedDB);
-      }
-      if (selectedDBSR) {
-        filtered = filtered.filter(item => item["DBSR name"] === selectedDBSR);
-      }
-      if (selectedBeat) {
-        filtered = filtered.filter(item => item["Beat Name"] === selectedBeat);
-      }
-
-      const customers = [...new Set(filtered.map(item => item["Customer Name"]))];
-      customers.sort();
-
-      customers.forEach(name => {
-        const option = document.createElement("option");
-        option.value = name;
-        option.textContent = name;
-        customerDropdown.appendChild(option);
-      });
-
-      addMarkers(filtered);
-    });
-
-    document.getElementById("customerDropdown").addEventListener("change", function () {
-      const selectedDB = document.getElementById("dbNameDropdown").value;
-      const selectedDBSR = document.getElementById("dbsrNameDropdown").value;
-      const selectedBeat = document.getElementById("beatDropdown").value;
-      const customer = this.value;
-
-      let filtered = storeData;
-      if (selectedDB !== "ALL" && selectedDB) {
-        filtered = filtered.filter(item => item["DB NAME"] === selectedDB);
-      }
-      if (selectedDBSR) {
-        filtered = filtered.filter(item => item["DBSR name"] === selectedDBSR);
-      }
-      if (selectedBeat) {
-        filtered = filtered.filter(item => item["Beat Name"] === selectedBeat);
-      }
-      if (customer) {
-        filtered = filtered.filter(item => item["Customer Name"] === customer);
-      }
-
-      addMarkers(filtered);
-    });
-
-    fetchData();
+    // Boot
+    initData();
   </script>
 
+  <!-- Google Maps JS API key (yours) -->
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDmJhoaeBL3cDKrucjCZjmNm2uYi_WguL8&callback=initMap" async defer></script>
-
 </body>
 </html>
