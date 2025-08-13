@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Barun – Store Locator (Red Theme)</title>
+  <title>Barun – Store Locator (Red Theme + Distance List)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
@@ -11,9 +11,9 @@
       --muted: #626262;
       --card: #ffffff;
       --stroke: #e9d9d9;
-      --accent: #c62828;   /* main red */
+      --accent: #c62828;   /* main red for outlets */
       --accent-2: #e53935; /* lighter red */
-      --accent-3: #ffebee; /* very light red for backgrounds */
+      --green: #17bf63;    /* user location dot */
       --radius: 14px;
       --shadow: 0 8px 26px rgba(0,0,0,0.08);
     }
@@ -75,6 +75,18 @@
       display: grid; gap: 16px;
     }
 
+    /* Banner for geolocation help */
+    .banner {
+      display: none;
+      border: 1px solid #ffd4d4;
+      background: #fff7f7;
+      color: #8b1212;
+      border-radius: 10px;
+      padding: 12px 14px;
+      box-shadow: var(--shadow);
+    }
+    .banner.show { display: block; }
+
     /* Filters panel */
     .panel {
       border: 1px solid var(--stroke); border-radius: var(--radius);
@@ -98,24 +110,22 @@
       margin: 6px 2px 6px;
     }
 
-    /* Dropdowns (clear contrast) */
+    /* Dropdowns with clear contrast */
     select {
       width: 100%; padding: 12px 12px; font-size: 16px;
-      color: #111; background: #f4f6fb; /* light bluish/grey for contrast */
+      color: #111; background: #f4f6fb; /* light bluish/grey */
       border: 1px solid #d9dfe8; border-radius: 10px; outline: none;
     }
     select:focus { border-color: #f5a0a0; box-shadow: 0 0 0 3px #ffe3e3; }
-    select option {
-      background: #ffffff; color: #000;
-    }
+    select option { background: #ffffff; color: #000; }
 
-    /* Map + info */
+    /* Map + info + distance list */
     .map-card {
       border: 1px solid var(--stroke); border-radius: var(--radius);
       background: var(--card); box-shadow: var(--shadow);
       overflow: hidden;
     }
-    #map { width: 100%; height: 58vh; min-height: 360px; }
+    #map { width: 100%; height: 52vh; min-height: 320px; }
     .info {
       padding: 12px 14px; border-top: 1px solid var(--stroke);
       background: linear-gradient(180deg, #fff, #fff7f7);
@@ -123,8 +133,28 @@
     .info p { margin: 0; color: var(--muted); }
     .info strong { color: var(--text); }
 
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    .list-card {
+      border: 1px solid var(--stroke); border-radius: var(--radius);
+      background: var(--card); box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .list-header {
+      padding: 10px 14px; border-bottom: 1px solid var(--stroke);
+      background: linear-gradient(180deg, #fff, #fff6f6);
+      font-weight: 700; color: var(--accent);
+    }
+    .list {
+      max-height: 40vh; overflow: auto;
+    }
+    .row {
+      display: flex; justify-content: space-between; gap: 8px;
+      padding: 10px 14px; border-bottom: 1px solid #f1e4e4;
+      cursor: pointer;
+    }
+    .row:hover { background: #fff3f3; }
+    .row .name { font-weight: 600; }
+    .row .meta { color: var(--muted); font-size: 13px; }
+    .row .dist { font-weight: 700; color: #0c5b2a; } /* greenish for distance */
   </style>
 </head>
 <body>
@@ -143,6 +173,11 @@
   </header>
 
   <main class="wrap">
+    <!-- Banner if geolocation denied -->
+    <div id="geoBanner" class="banner">
+      Location access is off. To enable: tap the 🔒 icon in the address bar → Site settings → Location → Allow, then refresh.
+    </div>
+
     <!-- Filters -->
     <section class="panel">
       <div class="panel-header">
@@ -168,11 +203,19 @@
       </div>
     </section>
 
-    <!-- Map + info -->
+    <!-- Map -->
     <section class="map-card">
       <div id="map"></div>
       <div class="info">
         <p id="infoPanel">Pick filters to view outlets. Tap a marker for details.</p>
+      </div>
+    </section>
+
+    <!-- Distance list -->
+    <section class="list-card">
+      <div class="list-header">Outlets by distance (from your location)</div>
+      <div id="distanceList" class="list">
+        <!-- rows injected here -->
       </div>
     </section>
   </main>
@@ -186,8 +229,20 @@
     const n = v => { const x = parseFloat(v); return Number.isFinite(x) ? x : NaN; };
     const escapeHtml = s => String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     const uniqSorted = arr => [...new Set(arr.filter(v => t(v) !== ""))].sort((a,b)=>String(a).localeCompare(String(b),undefined,{sensitivity:'base'}));
+    const km = d => Math.round((d + Number.EPSILON) * 100) / 100;
 
-    // Resolve flexible headers
+    // Haversine
+    function haversineKm(lat1, lon1, lat2, lon2) {
+      const toRad = d => (d * Math.PI) / 180;
+      const R = 6371;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    // Flexible headers
     function getVal(row, candidates) {
       for (const key of candidates) {
         if (key in row && t(row[key]) !== "") return row[key];
@@ -211,7 +266,7 @@
     // State
     let data = []; // normalized rows: {db, dbsr, beat, customer, lat, lon}
     let map, infoWindow;
-    let markers = [];
+    let markers = []; // array of google.maps.Marker
     let userMarker = null, userLatLng = null;
 
     // DOM getters
@@ -220,6 +275,8 @@
     const $beat = () => document.getElementById("beatSelect");
     const $cust = () => document.getElementById("customerSelect");
     const $info = () => document.getElementById("infoPanel");
+    const $list = () => document.getElementById("distanceList");
+    const $banner = () => document.getElementById("geoBanner");
 
     // Build select with raw values; keep previous value if still valid
     function populateSelect(el, values, keepValue = true) {
@@ -250,17 +307,43 @@
       });
       infoWindow = new google.maps.InfoWindow();
 
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => {
-          userLatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          userMarker = new google.maps.Marker({
-            position: userLatLng, map, title: "Your Location",
-            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#e53935", fillOpacity: 1, strokeWeight: 2, strokeColor: "#ffffff" }
-          });
-        }, () => {});
-      }
+      // try to get current location immediately
+      navigator.geolocation?.getCurrentPosition(pos => {
+        setUserLocation(pos.coords.latitude, pos.coords.longitude);
+      }, err => {
+        if (err && err.code === 1) { // PERMISSION_DENIED
+          $banner().classList.add('show');
+        }
+      });
     }
+
+    function setUserLocation(lat, lng) {
+      userLatLng = { lat, lng };
+      if (!userMarker) {
+        userMarker = new google.maps.Marker({
+          position: userLatLng,
+          map,
+          title: "Your Location",
+          zIndex: 9999,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 12,                 // bigger & prominent
+            fillColor: "#17bf63",      // green
+            fillOpacity: 1,
+            strokeWeight: 3,
+            strokeColor: "#ffffff"
+          }
+        });
+      } else {
+        userMarker.setPosition(userLatLng);
+        userMarker.setMap(map);
+      }
+      // refresh distance list whenever we get/refresh location
+      buildDistanceList(filteredList());
+    }
+
     function clearMarkers(){ markers.forEach(m => m.setMap(null)); markers = []; }
+
     function fitToMarkers(includeUser = true) {
       const bounds = new google.maps.LatLngBounds();
       let any = false;
@@ -273,6 +356,7 @@
         });
       }
     }
+
     function makeMarker(entry) {
       if (!Number.isFinite(entry.lat) || !Number.isFinite(entry.lon)) return null;
       const gmaps = `https://www.google.com/maps?q=${entry.lat},${entry.lon}`;
@@ -280,6 +364,14 @@
         map,
         position: { lat: entry.lat, lng: entry.lon },
         title: entry.customer || "(No name)",
+        // outlets in red theme
+        icon: {
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28">
+              <circle cx="14" cy="14" r="8" fill="${'#c62828'}" stroke="white" stroke-width="2"/>
+            </svg>
+          `)}`
+        }
       });
       marker.addListener("click", () => {
         infoWindow.setContent(`
@@ -292,7 +384,7 @@
           </div>
         `);
         infoWindow.open(map, marker);
-
+        // select in Customer dropdown
         const custSel = $cust();
         if (custSel) {
           const match = [...custSel.options].find(o => o.value === (entry.customer || ""));
@@ -300,13 +392,17 @@
         }
         renderInfoPanel([entry]);
       });
+      // attach entry for list clicks
+      marker.__entry = entry;
       return marker;
     }
+
     function renderMarkers(list) {
       clearMarkers();
       list.forEach(e => { const m = makeMarker(e); if (m) markers.push(m); });
       fitToMarkers(true);
     }
+
     function renderInfoPanel(list) {
       if (!list || list.length === 0) { $info().innerHTML = "No outlets match the current filters."; return; }
       if (list.length === 1) {
@@ -325,7 +421,7 @@
       }
     }
 
-    /* DATA + FILTERS */
+    /* DATA + FILTERS + DISTANCE LIST */
     function filteredList() {
       const dbVal   = $db().value;
       const dbsrVal = $dbsr().value;
@@ -339,12 +435,14 @@
       if (custVal !== "ALL") list = list.filter(e => t(e.customer) === t(custVal));
       return list;
     }
+
     function rebuildDBSR() {
       const dbVal = $db().value;
       let list = data.slice();
       if (dbVal !== "ALL") list = list.filter(e => t(e.db) === t(dbVal));
       populateSelect($dbsr(), uniqSorted(list.map(e => e.dbsr)), true);
     }
+
     function rebuildBeat() {
       const dbVal = $db().value, dbsrVal = $dbsr().value;
       let list = data.slice();
@@ -352,14 +450,64 @@
       if (dbsrVal !== "ALL") list = list.filter(e => t(e.dbsr) === t(dbsrVal));
       populateSelect($beat(), uniqSorted(list.map(e => e.beat)), true);
     }
+
     function rebuildCustomer() {
       const list = filteredList(); // uses current DB/DBSR/Beat
       populateSelect($cust(), uniqSorted(list.map(e => e.customer)), false);
     }
+
     function applyFiltersAndRender() {
       const list = filteredList();
       renderMarkers(list);
       renderInfoPanel(list);
+      buildDistanceList(list);
+    }
+
+    function buildDistanceList(list) {
+      const box = $list();
+      box.innerHTML = "";
+      if (!userLatLng) {
+        box.innerHTML = `<div class="row"><div class="meta">Location off — tap “Use my location” or enable location permission to see distances.</div></div>`;
+        return;
+      }
+      // build array with distance
+      const withDist = list
+        .filter(e => Number.isFinite(e.lat) && Number.isFinite(e.lon))
+        .map(e => ({
+          ...e,
+          dist: haversineKm(userLatLng.lat, userLatLng.lng, e.lat, e.lon)
+        }))
+        .sort((a,b) => a.dist - b.dist);
+
+      if (withDist.length === 0) {
+        box.innerHTML = `<div class="row"><div class="meta">No mappable outlets in this filter.</div></div>`;
+        return;
+      }
+
+      withDist.forEach(e => {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.innerHTML = `
+          <div>
+            <div class="name">${escapeHtml(e.customer || "")}</div>
+            <div class="meta">DB: ${escapeHtml(e.db || "-")} • DBSR: ${escapeHtml(e.dbsr || "-")} • Beat: ${escapeHtml(e.beat || "-")}</div>
+          </div>
+          <div class="dist">${km(e.dist)} km</div>
+        `;
+        row.addEventListener("click", () => {
+          // find matching marker by coords
+          const m = markers.find(mk => {
+            const p = mk.getPosition();
+            return Math.abs(p.lat() - e.lat) < 1e-8 && Math.abs(p.lng() - e.lon) < 1e-8;
+          });
+          if (m) {
+            map.setCenter(m.getPosition());
+            map.setZoom(15);
+            google.maps.event.trigger(m, "click");
+          }
+        });
+        box.appendChild(row);
+      });
     }
 
     async function initData() {
@@ -375,7 +523,7 @@
         lon:      n(getVal(r, CANDS.LON)),
       }));
 
-      populateSelect($db(), uniqSorted(data.map(e => e.db)), true);
+      populateSelect($db(),   uniqSorted(data.map(e => e.db)),   true);
       rebuildDBSR(); rebuildBeat(); rebuildCustomer();
       applyFiltersAndRender();
     }
@@ -388,15 +536,33 @@
 
     // Header button
     document.getElementById("useMyLocation").addEventListener("click", () => {
-      if (userLatLng) { map.setCenter(userLatLng); map.setZoom(14); }
-      else alert("Couldn't access your location yet. Please allow location permissions.");
-    });
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          $banner().classList.remove('show');
+          setUserLocation(pos.coords.latitude, pos.coords.longitude);
+          map.setCenter(userLatLng); map.setZoom(14);
+        }, err => {
+          if (err && err.code === 1) { // denied
+            $banner().classList.add('show');
+            alert("Location permission is blocked. Tap the lock icon → Site settings → Allow Location, then refresh.");
+          }
+        });
+      } else {
+        alert("Geolocation not supported on this device/browser.");
 
-    // Boot
-    initData();
-  </script>
+// Boot
 
-  <!-- Google Maps JS API key (yours) -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDmJhoaeBL3cDKrucjCZjmNm2uYi_WguL8&callback=initMap" async defer></script>
+initData();
+
+</script>
+
+<!-- Google Maps JS API -->
+
+<script
+
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDmJhoaeBL3cDKrucjCZj mNm2uYi_WguL8&callback=initMap" async defer>
+
+  
+</script>
 </body>
 </html>
