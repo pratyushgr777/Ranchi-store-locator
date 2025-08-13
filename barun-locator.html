@@ -73,6 +73,7 @@
     .row { display: flex; justify-content: space-between; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #f1e4e4; cursor: pointer; }
     .row:hover { background: #fff3f3; }
     .row .name { font-weight: 600; }
+    .row .name .code { color: #666; font-weight: 500; }
     .row .meta { color: var(--muted); font-size: 13px; }
     .row .dist { font-weight: 700; color: #0c5b2a; }
   </style>
@@ -162,12 +163,13 @@
       DBSR:     ["DBSR name","DBSR Name","DBSR"],
       BEAT:     ["Beat Name","Beat"],
       CUSTOMER: ["Customer Name","Customer"],
+      CUSTCODE: ["Customer Code","Cust Code","Code"],   // 👈 Column C (and common variants)
       LAT:      ["Latitude","Lat"],
       LON:      ["Longitude","Long","Lng"]
     };
 
     // ===== State
-    let data = [];           // {db, dbsr, beat, customer, lat, lon}
+    let data = [];           // {db, dbsr, beat, customer, customerCode, lat, lon}
     let map, infoWindow;
     let markers = [];
     let userMarker = null, userLatLng = null;
@@ -250,16 +252,19 @@
     function makeMarker(entry) {
       if (!Number.isFinite(entry.lat) || !Number.isFinite(entry.lon)) return null;
       const gmaps = `https://www.google.com/maps?q=${entry.lat},${entry.lon}`;
+      const title = entry.customerCode ? `${entry.customer} (${entry.customerCode})` : (entry.customer || "(No name)");
       const marker = new google.maps.Marker({
         map,
         position: { lat: entry.lat, lng: entry.lon },
-        title: entry.customer || "(No name)"
+        title
         // default Google red marker for outlets (reliable)
       });
       marker.addListener("click", () => {
         infoWindow.setContent(`
           <div style="min-width:220px">
-            <strong>${escapeHtml(entry.customer || "")}</strong><br/>
+            <strong>${escapeHtml(entry.customer || "")}</strong>
+            ${entry.customerCode ? ` <span style="color:#666">(${escapeHtml(entry.customerCode)})</span>` : ""}
+            <br/>
             DB: ${escapeHtml(entry.db || "-")}<br/>
             DBSR: ${escapeHtml(entry.dbsr || "-")}<br/>
             Beat: ${escapeHtml(entry.beat || "-")}<br/>
@@ -290,7 +295,9 @@
         const e = list[0];
         const link = (Number.isFinite(e.lat) && Number.isFinite(e.lon)) ? `https://www.google.com/maps?q=${e.lat},${e.lon}` : "#";
         $info().innerHTML = `
-          <strong>${escapeHtml(e.customer || "")}</strong><br/>
+          <strong>${escapeHtml(e.customer || "")}</strong>
+          ${e.customerCode ? ` <span style="color:#666">(${escapeHtml(e.customerCode)})</span>` : ""}
+          <br/>
           DB: ${escapeHtml(e.db || "-")}<br/>
           DBSR: ${escapeHtml(e.dbsr || "-")}<br/>
           Beat: ${escapeHtml(e.beat || "-")}<br/>
@@ -366,7 +373,10 @@
         row.className = "row";
         row.innerHTML = `
           <div>
-            <div class="name">${escapeHtml(e.customer || "")}</div>
+            <div class="name">
+              ${escapeHtml(e.customer || "")}
+              ${e.customerCode ? ` <span class="code">(${escapeHtml(e.customerCode)})</span>` : ""}
+            </div>
             <div class="meta">DB: ${escapeHtml(e.db || "-")} • DBSR: ${escapeHtml(e.dbsr || "-")} • Beat: ${escapeHtml(e.beat || "-")}</div>
           </div>
           <div class="dist">${km(e.dist)} km</div>
@@ -392,12 +402,13 @@
         const raw = await res.json();
 
         data = raw.map(r => ({
-          db:       t(getVal(r, CANDS.DB)),
-          dbsr:     t(getVal(r, CANDS.DBSR)),
-          beat:     t(getVal(r, CANDS.BEAT)),     // “Beat Name” or “Beat”
-          customer: t(getVal(r, CANDS.CUSTOMER)),
-          lat:      n(getVal(r, CANDS.LAT)),
-          lon:      n(getVal(r, CANDS.LON)),
+          db:           t(getVal(r, CANDS.DB)),
+          dbsr:         t(getVal(r, CANDS.DBSR)),
+          beat:         t(getVal(r, CANDS.BEAT)),     // “Beat Name” or “Beat”
+          customer:     t(getVal(r, CANDS.CUSTOMER)),
+          customerCode: t(getVal(r, CANDS.CUSTCODE)), // 👈 added
+          lat:          n(getVal(r, CANDS.LAT)),
+          lon:          n(getVal(r, CANDS.LON)),
         }));
 
         populateSelect($db(), uniqSorted(data.map(e => e.db)), true);
