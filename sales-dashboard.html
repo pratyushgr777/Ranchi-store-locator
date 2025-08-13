@@ -10,11 +10,13 @@
       --accent:#c62828; --accent2:#e53935; --radius:14px; --shadow:0 8px 26px rgba(0,0,0,.08);
     }
     *{box-sizing:border-box} html,body{height:100%}
-    body{margin:0;background:
-      radial-gradient(800px 500px at 10% -10%, #ffebee, transparent 60%),
-      radial-gradient(700px 500px at 110% 0%, #fff3f3, transparent 60%),
-      var(--bg);
-      color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    body{
+      margin:0;background:
+        radial-gradient(800px 500px at 10% -10%, #ffebee, transparent 60%),
+        radial-gradient(700px 500px at 110% 0%, #fff3f3, transparent 60%),
+        var(--bg);
+      color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif
+    }
     .appbar{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.9);
       backdrop-filter:saturate(140%) blur(6px); border-bottom:1px solid var(--stroke)}
     .appbar-inner{display:flex;align-items:center;justify-content:space-between;max-width:1100px;margin:0 auto;padding:12px 16px}
@@ -88,7 +90,6 @@
       statusEl.innerHTML = "";
       totalsEl.textContent = "";
 
-      // fetch each tab, show per-tab status
       const results = await Promise.allSettled(
         tabURLs.map(({tab, url}) =>
           fetch(url).then(r => {
@@ -110,12 +111,11 @@
         } else {
           const { tab } = tabURLs[i];
           addStatusRow(tab, 0, false, String(res.reason));
+          console.error(`Tab "${tab}" error:`, res.reason);
         }
       });
 
       totalsEl.textContent = `Combined rows loaded: ${total.toLocaleString()} (across ${TABS.length} tabs)`;
-
-      // Render a sample preview (first 20 rows), showing the union of keys
       renderPreview(merged.slice(0, 20));
     }
 
@@ -123,9 +123,9 @@
       const div = document.createElement("div");
       div.className = "row";
       div.innerHTML = `
-        <div><strong>${tab}</strong></div>
+        <div><strong>${escapeHtml(tab)}</strong></div>
         <div>${ok ? `<span class="ok">Connected ✓</span>` : `<span class="err">Error ✕</span>`}</div>
-        <div class="small">${ok ? `${count.toLocaleString()} rows` : err}</div>
+        <div class="small">${ok ? `${count.toLocaleString()} rows` : escapeHtml(err)}</div>
       `;
       statusEl.appendChild(div);
     }
@@ -151,8 +151,11 @@
       ).join("");
     }
 
+    // ✅ FIXED: missing `)` earlier caused a fatal script error
     function escapeHtml(s) {
-      return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]);
+      return String(s).replace(/[&<>"']/g, m => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      })[m]);
     }
 
     $("refreshBtn").addEventListener("click", loadAll);
